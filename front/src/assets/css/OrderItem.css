@@ -1,0 +1,334 @@
+/* 整个产品内容容器 */
+.product-item {
+    width: 1230px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    margin-bottom: 20px;
+  }
+.productContent {
+    display: flex;
+    justify-content: flex-start; /* 左对齐 */
+    align-items: flex-start;  /* 确保所有内容在容器顶部对齐 */
+    width: 100%;
+    max-width: 1230px;  /* 限制最大宽度 */
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* 图片部分 */
+  .product-image {
+    width: 30%;  /* 图片占容器的 1/3 */
+    height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-right: 20px;
+  }
+  
+  /* 数据和按钮部分 */
+  .textAndButtons {
+    display: flex;
+    justify-content: space-between; /* 让数据和按钮部分分别对齐左右 */
+    width: 70%;  /* 给数据和按钮部分分配宽度 */
+    text-align: left;
+    gap: 20px; /* 增加数据和按钮之间的间隙 */
+  }
+  
+  .productDetails {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;  /* 水平居中 */
+    align-items: flex-start;  /* 保证子元素顶部对齐 */
+  }
+  .nameAuthor {
+    width: 250px;
+    text-align: left;
+  }
+  
+  .product-name {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0 0 15px; /* 名称下方的间距 */
+    color: #333;  /* 深色文字突出 */
+  }
+  
+  .product-author {
+    font-size: 16px;
+    color: #666;
+    margin: 0 0 15px;
+    margin-left: 10px;
+  }
+  
+  .starting-price {
+    font-size: 18px;
+    color: #f56c6c; /* 红色强调价格 */
+    margin: 0;
+  }
+  .payicon{
+    width: 40px;
+    height: 40px;
+  }
+  
+  .buy-button {
+    margin-top: 20px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  }
+  .buy-button:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+  }
+  .priceAtatus {
+    width: 150px;
+    text-align: left;
+  }
+  
+  .priceAtatus p {
+    font-size: 16px;
+    margin: 0 0 20px; 
+  }
+  
+  .auntion-status {
+    font-weight: bold;
+    color: #409eff;
+  }
+  
+  .orderTime {
+    text-align: left;
+  }
+  
+  .orderTime p {
+    font-size: 16px;
+    color: #888; /* 灰色文本，给出提示信息 */
+    margin: 0 0 5px;
+  }
+  
+  .orderTime .deadline {
+    margin-top: 20px;
+    color: #f56c6c;
+  }
+  
+  .buttonContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; 
+    height: 100%; 
+    gap: 10px; /* 按钮之间的间隔 */
+    width: 30%; /* 设置按钮部分宽度 */
+  }
+  
+  .viewButton {
+    background-color: #808080;
+    color: #fff;
+    border-radius: 4px;
+    padding: 10px 0;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.5s ease;
+    width: 100%;
+  }
+  
+  .viewButton:hover {
+    background-color: #d5d5d5 !important; 
+    color: #000000 !important;
+  }
+  
+  .viewButton:focus {
+    outline: none;
+  }
+  
+  .shipButton {
+    margin-left: 12px;
+    background-color: #808080;
+    color: #fff;
+    border-radius: 4px;
+    padding: 10px 0;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.5s ease;
+    width: 100%;
+  }
+  
+  .shipButton:hover {
+    background-color: #d5d5d5 !important; 
+    color: #000000 !important;
+  }
+  
+  .shipButton:focus {
+    outline: none;
+  }
+  
+  .shipping-info-container {
+    padding: 20px;
+    border-radius: 8px;
+  }
+  
+  .shipping-form-item {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .shipping-form-item label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 8px;
+  }
+  
+  .shipping-form-item input,
+  .shipping-form-item .el-select{
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    box-sizing: border-box; 
+  }
+  .shipping-form-item input {
+    height: 30px; 
+  }
+  .shipping-form-item input::placeholder {
+    color: #aaa;
+  }
+  
+  .custom-select,
+  .custom-datepicker {
+    margin-top: 5px;
+  }
+  .radio{
+    width: 180px;
+    margin-bottom: 20px;
+    margin-top: 20px;
+  }
+  .payicon{
+    width: 40px;
+    height: 40px;
+  }
+  .radio-group {
+    display: flex;
+    gap: 20px;
+    height: 100%; 
+  }
+  
+  .radio-group .el-radio {
+    font-size: 14px;
+    display: flex;
+    align-items: center; /* 使 radio 按钮垂直居中 */
+    height: 100%; /* 保证按钮高度一致 */
+  }
+  .shipping-address-phone {
+    display: flex;
+    justify-content: space-between; 
+    gap: 20px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.address-container {
+    display: flex;
+    gap: 36px;
+}
+
+.address-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    width: 43%; 
+}
+
+.address-item label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+}
+
+.address-item input {
+    width: 100%; /* 让输入框占满父容器宽度 */
+    padding: 7px;
+    font-size: 14px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+  .el-descriptions {
+    margin-bottom: 20px;
+  }
+  .custom-tag {
+    margin-left: 80px;
+    width: 100px;
+    font-size: 18px; 
+    padding: 5px 10px;
+  }
+
+
+  .review-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    background-color: #2b2b2b;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .review-section {
+    margin-bottom: 20px;
+  }
+  
+  .section-row {
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+  }
+  
+  .section-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #d4d4d4;
+    margin: 0; 
+    white-space: nowrap;
+  }
+  
+  .comment-text {
+    font-size: 14px;
+    color: #606266;
+    line-height: 1.5;
+    padding: 10px;
+    background-color: #ffffff;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    flex-grow: 1;
+  }
+  
+  .submit-button {
+    text-align: center;
+    margin-top: 20px;
+  }
+  .el-rate {
+    margin-bottom: 0; 
+  }
+  
+  .el-textarea {
+    border-radius: 4px;
+    border: 1px solid #dcdfe6;
+    flex-grow: 1;
+  }
+  
+  .el-textarea:focus {
+    border-color: #409eff;
+    outline: none;
+  }
+  

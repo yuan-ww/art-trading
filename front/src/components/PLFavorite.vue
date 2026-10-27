@@ -1,0 +1,177 @@
+<template>
+    <div>
+        <el-row class="toolbar" :gutter="20" style="margin-bottom: 20px;">
+            <el-col :span="6">  
+            </el-col>
+            <el-col :span="8">
+                <el-input
+                    v-model="searchQuery"
+                    placeholder="输入艺术品名称搜索"
+                    clearable
+                />
+            </el-col>
+            <el-col :span="2">  
+            </el-col>
+            <el-col :span="8">
+                <div class="statistics">共 {{ filteredArtworks.length }} 条记录</div>
+            </el-col>
+        </el-row>
+        <div class="table-container">
+            <div v-if="isLoading" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            </div>
+            <transition-group
+            name="fade-in"
+            tag="div"
+            :class="['product-list', { 'filter-enabled': showFilter }]"
+            v-if="filteredArtworks.length > 0 && !isLoading"
+            >
+            <div v-for="artwork in filteredArtworks" :key="artwork.artworkId" class="product-item">
+                <div class="product-details">
+                <div class="name-author">
+                    <p class="product-name">《{{ artwork.name }}》</p>
+                    <p class="product-author">{{ artwork.author }}</p>
+                </div>
+                <div class="price-status">
+                    <p class="starting-price">￥{{ artwork.fixedPrice }}</p>
+                    <p class="auntion-status">{{ artwork.status }}</p>
+                    <p class="product-author">{{ artwork.saleType }}</p>
+                </div>
+                </div>
+                <img :src="artwork.images[0].imageUrl" alt="商品图片" class="product-image" />
+                <div class="action-buttons">
+                    <router-link :to="{ name: 'DetailsWithDeal', params: { artworkId: artwork.artworkId } }" @click="setArtworkInVuex(artwork)">
+                        <el-button>查看</el-button>
+                    </router-link>
+                <el-popconfirm 
+                    title="确定移除收藏?"
+                    @confirm="() => handleDelete(artwork)"
+                >
+                    <template #reference>
+                    <el-button>移除</el-button>
+                    </template>
+                </el-popconfirm>
+                </div>
+            </div>
+            </transition-group>
+            <div v-else-if="!isLoading" class="nodata">
+            <p>没有数据~</p>
+            </div>
+        </div>
+        <el-dialog
+        v-model="infodialogVisible"
+        title="艺术品详情"
+        width="50%"
+        >
+        <el-form label-width="120px">
+            <el-row :gutter="20">
+            <el-col :span="12">
+                <el-form-item label="艺术品编号 :">
+                <span>{{ selectedArtworkInFo.artworkId }}</span>
+                </el-form-item>
+                <el-form-item label="艺术品名称 :">
+                <span>{{ selectedArtworkInFo.name }}</span>
+                </el-form-item>
+                <el-form-item label="艺术品作者 :">
+                <span>{{ selectedArtworkInFo.author }}</span>
+                </el-form-item>
+                <el-form-item label="艺术品描述 :">
+                <span>{{ selectedArtworkInFo.description }}</span>
+                </el-form-item>
+            </el-col>
+            <el-col :span="12">
+                <el-form-item label="艺术分类 :">
+                <span>{{ selectedArtworkInFo.category?.name || '未分类' }}</span>
+                </el-form-item>
+                <el-form-item label="作品定价 :">
+                <span>{{ selectedArtworkInFo.fixedPrice }}</span>
+                </el-form-item>
+                <el-form-item label="销售形式 :">
+                <span>{{ selectedArtworkInFo.saleType }}</span>
+                </el-form-item>
+                <el-form-item label="当前状态 :">
+                <span>{{ selectedArtworkInFo.status }}</span>
+                </el-form-item>
+                <el-form-item label="创建时间 :">
+                <span>{{ selectedArtworkInFo.createdAt }}</span>
+                </el-form-item>
+                <el-form-item label="更新时间 :">
+                <span>{{ selectedArtworkInFo.updatedAt }}</span>
+                </el-form-item>
+            </el-col>
+            </el-row>
+        </el-form>
+    </el-dialog>
+    </div>
+</template>
+  
+<script>
+import { mapState } from 'vuex';
+import { fetchArtworkImages} from '../utils/artworkService';
+import {getFavoritesByUser,removeFavorite } from '../utils/favoriteService';
+import { ElMessage } from 'element-plus';
+export default {
+    data() {
+        return { 
+            isLoading:true,
+            artworks: [],
+            images: [],
+            artworkImages: [],
+            searchQuery: '',
+        };  
+    },
+    computed: {
+        ...mapState({
+        userId: state => state.user.id,
+        }),
+        filteredArtworks() {
+            if (!Array.isArray(this.artworks) || this.artworks.length === 0) {
+                 return [];
+            }   
+            if (this.searchQuery && this.searchQuery.trim()) {
+                return this.artworks.filter(artwork =>
+                    artwork.name && artwork.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+                );
+            }
+            return this.artworks;
+        },
+    },
+    mounted() {  
+        this.fetchArtworksList();
+    },
+    methods: {
+        setArtworkInVuex(artwork) {
+        this.$store.dispatch('updateArtwork', artwork);
+        localStorage.setItem('artwork', JSON.stringify(artwork));
+      },
+        fetchImages(artworkId) {
+            fetchArtworkImages(artworkId)
+                .then((response) => {
+                    this.artworkImages = response.data; 
+                })
+                .catch((error) => {
+                console.error('Error fetching images:', error);
+                });
+        },
+        async handleDelete(artwork) {
+            const response= await removeFavorite(this.userId,artwork.artworkId);
+            if(response){
+                ElMessage.success(`移除成功`);
+                this.fetchArtworksList();  
+            }   
+        },
+        async fetchArtworksList() {
+            try {
+                const response = await getFavoritesByUser(this.userId);
+                this.artworks = response.map(favorite => favorite.artwork);
+                this.isLoading =false
+            } catch (error) {
+                console.error('获取艺术品数据失败:', error);
+            }
+        },
+    },
+};
+</script>
+<style scoped src="@/assets/css/HomePage.css"></style>
+<style scoped src="@/assets/css/ProductItemAll.css"></style>
+  

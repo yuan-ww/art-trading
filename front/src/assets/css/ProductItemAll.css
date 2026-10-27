@@ -1,0 +1,133 @@
+
+.product-item {
+    width: 283px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  
+  .product-item:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  }
+  /* 商品名称样式 */
+.product-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  /* 商品作者样式 */
+  .product-author {
+    font-size: 14px;
+    color: #777;
+  }
+  .starting-price {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f60;
+  }
+  /* 商品图片样式 */
+  .product-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  /* 商品详情样式 */
+  .product-details {
+    padding-left: 8px;
+  }
+  
+  /* 商品名称和作者容器样式 */
+  .name-author {
+    margin-bottom: 5px;
+  }
+  /* 商品名称样式 */
+  .product-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  /* 商品作者样式 */
+  .product-author {
+    font-size: 14px;
+    color: #777;
+  }
+  .starting-price {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f60;
+  }
+  .price-status {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* 设置元素之间的间距 */
+  }
+  .product-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    padding-top: 10px;
+  }
+  .auntion-status {
+    margin-left: 50px;
+    font-size: 14px;
+    color: #ffffff;
+    background-color: #00df0b;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  /* 操作按钮容器样式 */
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    padding: 15px;
+    border-top: 1px solid #e0e0e0;
+  }
+  
+  /* 按钮通用样式 */
+  .action-buttons .el-button {
+    margin: 0 5px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .action-buttons .el-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    filter: brightness(1.1);
+  }
+  /* 操作按钮容器样式 */
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    padding: 15px;
+    border-top: 1px solid #e0e0e0;
+  }
+  
+.product-item:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* 按钮通用样式 */
+  .action-buttons .el-button {
+    margin: 0 5px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .action-buttons .el-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    filter: brightness(1.1);
+  }

@@ -1,0 +1,244 @@
+
+.body{
+    width: auto;
+  }
+  .image-container {
+    width: 50%;
+    padding-right: 10px; 
+    display: flex;
+    justify-content: center;
+  }
+  
+  .image-container img {
+    width: 100%; 
+    height: 150px;
+    object-fit: cover; 
+  }
+  
+  .text-container p {
+    color: #2e2e2e;
+    font-size: 16px;
+    line-height: 1.5;
+    margin: 5px 0; 
+  }
+  .text-container p .icon {
+    width: 18px; 
+    height: 18px; 
+    margin-right: 8px; 
+    object-fit: contain; 
+  }
+  .text-container {
+    margin-left: 120px;
+    display: flex; 
+    flex-direction: column;
+    justify-content: center; 
+    width: 30%; 
+    text-align: center; 
+    align-items: flex-start; 
+    text-align: left; 
+  }
+  
+  .auction-list {
+    padding: 20px;
+  }
+  .banner {
+    display: flex;
+    width: 100%;
+    height: 100px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    background-color: #f5f5f5;
+  }
+  .banner-left{
+    width: 70%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .banner-right {
+    width: 30%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .banner-left {
+    background: #ccc;
+  }
+  .banner-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .banner-right {
+    background: #ffffff;
+    color: rgb(60, 60, 60);
+    flex-direction: column;
+    padding: 20px;
+    text-align: center;
+  }
+  .banner-right h1 {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 0;
+  }
+  .banner-right p {
+    font-size: 14px;
+    margin: 10px 0 0;
+  }
+  .header-2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .view-all-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #333;
+    font-size: 16px;
+    transition: color 0.3s;
+  }
+  .view-all-link:hover {
+    color: #007bff; 
+  }
+  .view-all-link img {
+    width: 16px;
+    height: 16px;
+    margin-left: 5px; 
+  }
+  .auction-items {
+    margin-top: 10px;
+  }
+  .auction-placeholder {
+    display: flex;
+    align-items: center; 
+    margin: 30px;
+    margin-top: 15px;
+    height: 150px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    text-decoration: none; /* 去除下划线 */
+    transition: all 0.3s ease; 
+  }
+  .auction-placeholder:hover {
+    text-decoration: underline;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* 添加阴影效果 */
+  }
+  .link-container {
+    margin-top: 30px;
+    padding: 10px;
+    margin-right: 20px;
+    display: flex;
+    justify-content: space-between; 
+    gap: 40px;
+  }
+  
+  .link-item {
+    flex: 1; 
+    height: 100px; 
+    background-color: #2e2e2e; 
+    color: white; 
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none; 
+    margin: 0 20px;
+    transition: transform 0.3s, background-color 0.3s; 
+  }
+  .link-item:hover {
+    transform: scale(1.02); 
+  }
+  .link-content {
+    margin-right: 30%;
+    margin-top: 20px;
+    align-self: flex-start; 
+  }
+  .large-text {
+    color: rgb(212, 212, 212);
+    font-size: 30px;
+    display: block; 
+  }
+  .small-text {
+    display: block; 
+    font-size: 12px; 
+    opacity: 0.8;
+  }
+  .sideshow{
+    width: auto;
+    height: 620px;
+    background-color: rgb(47, 47, 47);
+  }
+  .order-status-section {
+    margin-top: 30px;
+  }
+  
+  .order-card {
+    background-color: #606060;
+    border-radius: 10px;
+    padding: 20px 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    min-height: 200px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  .order-card:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    transform: translateY(-8px);
+  }
+  .order-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #ececec;
+    border-left: 4px solid #ffffff;
+    padding-left: 10px;
+  }
+  
+  .order-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+  }
+  
+  .order-item {
+    flex: 0 0 calc(33.333% - 10.66px);
+    border-radius: 8px;
+    color: #3d3d3d;
+    background-color: #eee;
+    font-weight:bold;
+    padding: 10px 0;
+    border-bottom: 1px dashed #eee;
+    transition: color 0.2s ease;
+  }
+  
+  .order-item:last-child {
+    border-bottom: none;
+  }
+  
+  .no-data {
+    font-size: 18px;
+    color: #ffffff;
+    text-align: center;
+    margin-top: 40px;
+  }
+  .order-info {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .order-price {
+    font-weight: bold;
+    margin-left: 10px;
+    color: #e67e22;
+    white-space: nowrap;
+  }
+  .order-card-link {
+    display: block;
+    text-decoration: none;
+    color: #333;
+  }
+  
