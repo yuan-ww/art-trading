@@ -4,6 +4,7 @@ import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +17,8 @@ import java.util.*;
 
 @Service
 public class UserService {
-    private static final String UPLOAD_DIR = "E:/Vues/myvue/demo/src/main/resources/static/images/avatars";
+    @Value("${upload.path}")
+    private String imagesPath;
     @Autowired
     private UserRepository userRepository;
 
@@ -156,7 +158,7 @@ public class UserService {
             // 提取文件名
             String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
             // 创建文件路径
-            Path filePath = Paths.get(UPLOAD_DIR, fileName);
+            Path filePath = Paths.get(imagesPath, "avatars", fileName);
             // 删除文件
             if (Files.exists(filePath)) {
                 Files.delete(filePath);  // 删除文件

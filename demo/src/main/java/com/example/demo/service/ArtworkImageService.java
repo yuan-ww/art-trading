@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.model.ArtworkImage;
 import com.example.demo.repository.ArtworkImageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -14,7 +15,8 @@ public class ArtworkImageService {
     @Autowired
     private ArtworkImageRepository artworkImageRepository;
 
-    private static final String UPLOAD_DIR = "E:/Vues/myvue/demo/src/main/resources/static/uploads";
+    @Value("${uploads.path}")
+    private String uploadDir;
 
     // 根据 imageId 删除图片
     public boolean deleteImageById(Integer imageId) {
@@ -44,7 +46,7 @@ public class ArtworkImageService {
             // 提取文件名
             String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
             // 创建文件对象
-            File file = new File(UPLOAD_DIR, fileName);
+            File file = new File(uploadDir, fileName);
             // 删除文件
             if (file.exists()) {
                 return file.delete();

@@ -7,6 +7,7 @@ import com.example.demo.repository.CategoryRepository;
 import com.example.demo.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,7 +32,8 @@ public class ArtworksService {
     private final UserRepository userRepository;
     private final ArtworkImageRepository artworkImageRepository;
     private static final Logger logger = Logger.getLogger(ArtworksService.class.getName());
-    private static final String UPLOAD_DIR = "E:/Vues/myvue/demo/src/main/resources/static/uploads/";
+    @Value("${uploads.path}")
+    private String uploadDir;
 
 
     @Autowired
@@ -102,8 +104,9 @@ public class ArtworksService {
     public String uploadImage(MultipartFile file) {
         // 为图片生成唯一文件名
         String uniqueFileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        Path path = Paths.get("src/main/resources/static/uploads/" + uniqueFileName);
+        Path path = Paths.get(uploadDir, uniqueFileName);
         try {
+            Files.createDirectories(path.getParent());
             Files.write(path, file.getBytes());
             // 返回图片的 URL 地址
             return "http://localhost:10202/uploads/" + uniqueFileName;
@@ -203,7 +206,7 @@ public class ArtworksService {
             // 提取文件名
             String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
             // 创建文件路径
-            Path filePath = Paths.get(UPLOAD_DIR, fileName);
+            Path filePath = Paths.get(uploadDir, fileName);
             // 删除文件
             if (Files.exists(filePath)) {
                 Files.delete(filePath);  // 删除文件
