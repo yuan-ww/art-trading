@@ -1,6 +1,7 @@
 package com.example.demo.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -42,6 +43,9 @@ public class Artwork {
 
     @Column(name = "updated_at")
     private Timestamp updatedAt;  // 更新时间
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @Column(name = "category_id")
     private Integer categoryId;
@@ -55,6 +59,7 @@ public class Artwork {
 
     // 外键关联用户表
     @ManyToOne
+    @JsonIgnoreProperties({"email", "password", "phone", "realName", "idCardNumber", "address", "walletBalance", "role"})
     @JoinColumn(name = "user_id", referencedColumnName = "id", insertable = false, updatable = false)
     private User user;
 

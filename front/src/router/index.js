@@ -1,68 +1,68 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginRegister from '../views/loginRegister.vue'
-import HomePage from '../views/HomePage.vue'
-import StartPage from '../views/StartPage.vue'
-import SalePage from '../views/SalePage.vue'
-import AuctionPage from '../views/AuctionPage.vue'
-import AllArtworkPage from '../views/AllArtworkPage.vue'
-import DetailsWithDeal from '../views/DetailsWithDeal.vue'
-import PersonalCenter from '../views/PersonalCenter.vue'
-import AuctionEnter from '../views/AuctionEnter.vue'
-import ServicePage from '../views/ServicePage.vue'
-import StoryPage from '../views/StoryPage.vue'
+const StartPage = () => import('../views/StartPage.vue')
+const LoginRegister = () => import('../views/loginRegister.vue')
+const HomePage = () => import('../views/HomePage.vue')
+const SalePage = () => import('../views/SalePage.vue')
+const AuctionPage = () => import('../views/AuctionPage.vue')
+const AllArtworkPage = () => import('../views/AllArtworkPage.vue')
+const DetailsWithDeal = () => import('../views/DetailsWithDeal.vue')
+const PersonalCenter = () => import('../views/PersonalCenter.vue')
+const AuctionEnter = () => import('../views/AuctionEnter.vue')
+const ServicePage = () => import('../views/ServicePage.vue')
+const StoryPage = () => import('../views/StoryPage.vue')
 const routes = [
   {
     path: '/',
     name: 'StartPage',
-    component: StartPage, 
+    component: StartPage,
   },
   {
     path: '/salepage',
     name: 'SalePage',
-    component: SalePage, 
+    component: SalePage,
   },
   {
     path: '/auctionpage',
     name: 'AuctionPage',
-    component: AuctionPage, 
+    component: AuctionPage,
   },
   {
     path: '/servicepage',
     name: 'ServicePage',
-    component: ServicePage, 
+    component: ServicePage,
   },
   {
     path: '/storypage',
     name: 'StoryPage',
-    component: StoryPage, 
+    component: StoryPage,
   },
   {
     path: '/allartworkpage',
     name: 'AllArtworkPage',
-    component: AllArtworkPage, 
+    component: AllArtworkPage,
   },
   {
     path: '/detailsWithdeal/:artworkId',
     name: 'DetailsWithDeal',
-    component: DetailsWithDeal, 
+    component: DetailsWithDeal,
   },
   {
     path: '/login-register',
     name: 'LoginRegister',
     component: LoginRegister,
-    meta: { hideHeaderAndFooter: true } 
+    meta: { hideHeaderAndFooter: true }
   },
   {
     path: '/homepage',
     name: 'HomePage',
     component: HomePage,
-    meta: { hideHeaderAndFooter: true }  
+    meta: { hideHeaderAndFooter: true }
   },
   {
     path: '/personalcenter',
     name: 'PersonalCenter',
     component: PersonalCenter,
-    meta: { hideHeaderAndFooter: true }  
+    meta: { hideHeaderAndFooter: true }
   },
   {
     path: '/auctionenter',

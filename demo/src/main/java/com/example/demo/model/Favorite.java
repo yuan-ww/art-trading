@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Favorites")
+@Table(
+        name = "Favorites",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_favorites_user_artwork",
+                columnNames = {"user_id", "artwork_id"}
+        )
+)
 public class Favorite {
 
     @Id

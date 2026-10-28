@@ -17,7 +17,7 @@
           @input="onSearch"
         />
       </div>
-      <div class="statistics">共 {{ filteredProducts.length }} 条记录</div>
+      <div class="statistics">共 {{ total }} 条记录</div>
     </div>
     <div class="main-container">
        <div v-if="showFilter" class="filter">
@@ -76,7 +76,7 @@
     <div class="container">
       <div :class="['product-list', { 'filter-enabled': showFilter }]" v-if="filteredProducts.length > 0">
         <router-link :to="{ name: 'DetailsWithDeal', params: { artworkId: artwork.artworkId } }" @click="setArtworkInVuex(artwork)" v-for="artwork in filteredProducts" :key="artwork.artworkId" class="product-item">
-          <img :src="artwork.images[0].imageUrl" alt="商品图片" class="product-image" />
+          <img :src="thumbnail(artwork.images?.[0]?.imageUrl)" @error="useOriginalImage($event, artwork.images?.[0]?.imageUrl)" alt="商品图片" class="product-image" />
           <div class="product-details">
             <div class="name-author">
             <p class="product-name">《{{ artwork.name }}》</p>
@@ -90,17 +90,24 @@
       <div v-else class="nodata">
         <p>没有找到相关内容~</p>
       </div>
+      <el-pagination v-if="total > pageSize" layout="prev, pager, next" :total="total" :page-size="pageSize" :current-page="page + 1" @current-change="changePage" />
     </div>
   </div>
   </template>
   
   <script>
   import { fetchCategories } from '../utils/artworkService';
-  import { getAllArtworksWithImages} from '../utils/startService';
+  import axios from 'axios';
+  import { API_BASE_URL } from '../config/api';
   export default {
   data() {
     return {
       auctionArtworks:[],
+      page: 0,
+      pageSize: 20,
+      total: 0,
+      searchTimer: null,
+      requestSequence: 0,
       searchQuery: '',
       selectedFilter: [], 
       selectedCategories: [],
@@ -114,41 +121,7 @@
   },
   computed: {
     filteredProducts() {
-        let filtered = this.auctionArtworks;
-        filtered = filtered.filter(artwork => artwork.status !== '审核');
-        // 根据分类筛选
-        if (this.selectedCategories && this.selectedCategories.length > 0) {
-        filtered = filtered.filter(artwork =>
-          this.selectedCategories.includes(artwork.category.name) 
-        );
-      }
-  
-      // 然后筛选艺术家
-      if (this.selectedAuthors && this.selectedAuthors.length > 0) {
-        filtered = filtered.filter(artwork =>
-          this.selectedAuthors.includes(artwork.author)
-        );
-      }
-      if (this.selectedStatus && this.selectedStatus.length > 0) {
-        filtered = filtered.filter(artwork =>
-          this.selectedStatus.includes(artwork.status)
-        );
-      } if (this.selectedType && this.selectedType.length > 0) {
-        filtered = filtered.filter(artwork =>
-          this.selectedType.includes(artwork.saleType)
-        );
-      }
-        // 根据搜索关键字筛选
-        if (this.searchQuery) {
-          const query = this.searchQuery.toLowerCase();
-          filtered = filtered.filter(artwork =>
-            artwork.name.toLowerCase().includes(query) ||
-            artwork.author.toLowerCase().includes(query) ||
-            artwork.category.name.toLowerCase().includes(query) ||
-            artwork.user.username.toLowerCase().includes(query)
-          );
-        }
-        return filtered;
+        return this.auctionArtworks;
       },
   },
   mounted() { 
@@ -159,15 +132,36 @@
         this.fetchCategorizedArtworks();
     },
   methods: {
+    onSearch() { clearTimeout(this.searchTimer); this.searchTimer = setTimeout(() => this.resetPage(), 300); },
+    resetPage() { this.page = 0; this.fetchCategorizedArtworks(); },
+    changePage(page) { this.page = page - 1; this.fetchCategorizedArtworks(); },
+    thumbnail(url) {
+      if (!url) return '';
+      return url.replace(/\/uploads\/([^/]+)\.[a-zA-Z0-9]+$/, '/uploads/thumbnails/$1.png');
+    },
+    useOriginalImage(event, url) {
+      if (url && !event.target.dataset.originalFallback) {
+        event.target.dataset.originalFallback = 'true';
+        event.target.src = url;
+      }
+    },
     setArtworkInVuex(artwork) {
         this.$store.dispatch('updateArtwork', artwork);
         localStorage.setItem('artwork', JSON.stringify(artwork));
       },
     async fetchCategorizedArtworks() {
+        const sequence = ++this.requestSequence;
         try {
-          const response = await getAllArtworksWithImages();
-          const artworks = response.data;  
-          this.auctionArtworks = artworks;
+          const params = new URLSearchParams({ page: this.page, size: this.pageSize });
+          if (this.searchQuery.trim()) params.append('keyword', this.searchQuery.trim());
+          this.selectedCategories.forEach(value => params.append('categories', value));
+          this.selectedAuthors.forEach(value => params.append('authors', value));
+          this.selectedStatus.forEach(value => params.append('statuses', value));
+          this.selectedType.forEach(value => params.append('types', value));
+          const { data } = await axios.get(`${API_BASE_URL}/api/artworks/public-page`, { params });
+          if (sequence !== this.requestSequence) return;
+          this.auctionArtworks = data.content.map(item => ({ ...item, category: { name: item.categoryName || '' }, user: { username: item.sellerName || '' }, images: item.imageUrl ? [{ imageUrl: item.imageUrl }] : [] }));
+          this.total = data.totalElements;
         } catch (error) {
           console.error("Error fetching categorized artworks:", error);
         }
@@ -196,20 +190,25 @@
       handler(newQuery) {
         if (newQuery !== undefined) {
           this.searchQuery = newQuery;
+          this.onSearch();
         }
       }
     },
     selectedCategories(newCategories) {
       this.selectedTags = [...newCategories, ...this.selectedAuthors];
+      this.resetPage();
     },
     selectedAuthors(newAuthors) {
       this.selectedTags = [...this.selectedCategories, ...newAuthors];
+      this.resetPage();
     },
     selectedStatus(newStatus) {
     this.selectedTags = [...this.selectedAuthors, ...newStatus];
+    this.resetPage();
   },
    selectedType(newType) {
     this.selectedTags = [...this.selectedStatus, ...newType];
+    this.resetPage();
   },
   }
   };

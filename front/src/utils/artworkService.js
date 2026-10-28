@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 // 设置基础URL
-const API_URL = 'http://localhost:10202/api/categories';
-const URL = 'http://localhost:10202/api/artworks';
-const IMAGE_URL = 'http://localhost:10202/api/artworkImages';
+const API_URL = `${API_BASE_URL}/api/categories`;
+const URL = `${API_BASE_URL}/api/artworks`;
+const IMAGE_URL = `${API_BASE_URL}/api/artworkImages`;
 
 export const fetchCategories = () => {
     return axios.get(`${API_URL}/getAllCategories`);
@@ -133,4 +134,3 @@ export const batchDeleteArtworks = async(ArtworkIds) => {
       throw error; 
     }
   };
-  

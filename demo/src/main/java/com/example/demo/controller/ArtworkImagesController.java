@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.model.ArtworkImage;
 import com.example.demo.repository.ArtworkImageRepository;
 import com.example.demo.service.ArtworkImageService;
+import com.example.demo.service.AccessControlService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,10 +19,15 @@ public class ArtworkImagesController {
     private ArtworkImageRepository artworkImageRepository;
     @Autowired
     private ArtworkImageService artworkImageService;
+    @Autowired
+    private AccessControlService accessControlService;
 
     // 删除图片接口
     @DeleteMapping("/deleteImage/{imageId}")
     public ResponseEntity<String> deleteImage(@PathVariable Integer imageId) {
+        ArtworkImage image = artworkImageRepository.findById(imageId)
+                .orElseThrow(() -> new IllegalArgumentException("未找到该图片"));
+        accessControlService.requireSelfOrAdmin(image.getArtwork().getUserId());
         try {
             boolean success = artworkImageService.deleteImageById(imageId);
             if (success) {

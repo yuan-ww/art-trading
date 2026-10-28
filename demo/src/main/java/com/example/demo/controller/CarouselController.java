@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.entity.Carousel;
 import com.example.demo.service.CarouselService;
+import com.example.demo.service.AccessControlService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,14 +14,17 @@ import java.util.Optional;
 public class CarouselController {
 
     private final CarouselService carouselService;
+    private final AccessControlService accessControlService;
 
-    public CarouselController(CarouselService carouselService) {
+    public CarouselController(CarouselService carouselService, AccessControlService accessControlService) {
         this.carouselService = carouselService;
+        this.accessControlService = accessControlService;
     }
 
     // 添加轮播图
     @PostMapping("/add/{artworkId}")
     public ResponseEntity<?> addCarousel(@PathVariable Integer artworkId) {
+        accessControlService.requireAdmin();
         if (carouselService.existsByArtworkId(artworkId)) {
             return ResponseEntity.ok(false);
         }
@@ -43,11 +47,13 @@ public class CarouselController {
     // 删除轮播图
     @DeleteMapping("/deleteCarousel/{id}")
     public ResponseEntity<String> deleteCarousel(@PathVariable Integer id) {
+        accessControlService.requireAdmin();
         carouselService.deleteCarousel(id);
         return ResponseEntity.ok("Carousel deleted successfully");
     }
     @DeleteMapping("/deleteCarouselByArtworkId/{artworkId}")
     public ResponseEntity<String> deleteCarouselByArtworkId(@PathVariable Integer artworkId) {
+        accessControlService.requireAdmin();
         carouselService.deleteCarouselByArtworkId(artworkId);
         return ResponseEntity.ok("Carousel deleted successfully by artworkId: " + artworkId);
     }

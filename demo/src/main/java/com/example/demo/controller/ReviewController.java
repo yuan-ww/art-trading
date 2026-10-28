@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.model.Review;
 import com.example.demo.service.ReviewService;
+import com.example.demo.service.AccessControlService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,8 @@ public class ReviewController {
 
     @Autowired
     private ReviewService reviewService;
+    @Autowired
+    private AccessControlService accessControlService;
 
     @GetMapping
     public List<Review> getAllReviews() {
@@ -22,7 +25,7 @@ public class ReviewController {
     }
 
     @GetMapping("/getReviewById/{id}")
-    public ResponseEntity<Review> getReviewById(@PathVariable Integer id) {
+    public ResponseEntity<Review> getReviewById(@PathVariable Long id) {
         Optional<Review> review = reviewService.getReviewById(id);
         return review.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -39,12 +42,22 @@ public class ReviewController {
 
     @PostMapping("/createReview")
     public ResponseEntity<Review> createReview(@RequestBody Review review) {
-        Review savedReview = reviewService.saveReview(review);
+        if (review.getUser() == null || review.getUser().getUserId() == null
+                || review.getOrder() == null || review.getOrder().getOrderId() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        Integer userId = review.getUser().getUserId();
+        Integer orderId = review.getOrder().getOrderId();
+        accessControlService.requireSelfOrAdmin(userId);
+        Review savedReview = reviewService.saveReview(review, userId, orderId);
         return ResponseEntity.ok(savedReview);
     }
 
     @DeleteMapping("/deleteReview/{id}")
-    public ResponseEntity<Void> deleteReview(@PathVariable Integer id) {
+    public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
+        Review review = reviewService.getReviewById(id)
+                .orElseThrow(() -> new IllegalArgumentException("评价不存在"));
+        accessControlService.requireSelfOrAdmin(review.getUser().getUserId());
         reviewService.deleteReview(id);
         return ResponseEntity.noContent().build();
     }

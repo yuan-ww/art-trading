@@ -18,7 +18,7 @@
             :zoom-rate="1.2"
             :max-scale="7"
             :min-scale="0.2"
-            
+
             preview-teleported="true"
             fit="cover"
             :preview-src-list="artwork.images.map(item => item.imageUrl)"
@@ -54,6 +54,7 @@
             <p><strong>描述:</strong> {{ artwork.description }}</p>
             <p><strong>发布者:</strong> {{ artwork.user.username }}</p>
             <p><strong>发布时间:</strong> {{ formatDate(artwork.createdAt) }}</p>
+            <el-button @click="reportArtwork">举报作品</el-button>
           </div>
           <div class="purchase-section">
             <div v-if="artwork.saleType === '拍卖'" class="auction-info flex-container">
@@ -107,62 +108,62 @@
         <div>
             <p>尊敬的参与者：</p>
             <p>感谢您报名参加本次拍卖会。为确保拍卖会的顺利进行，并明确各方的权利与义务，请您仔细阅读以下责任声明及协议内容。报名即视为您已充分理解并同意以下条款。</p>
-            
+
             <h3>一、参与者责任声明</h3>
-            
+
             <h4>身份确认与资质</h4>
             <p>参与者需确保所提供的个人信息真实、准确、完整。</p>
             <p>参与者需具备完全民事行为能力，若为机构代表，需提供合法授权文件。</p>
-            
+
             <h4>拍卖规则遵守</h4>
             <p>参与者需严格遵守拍卖会的规则和流程，包括但不限于竞价规则、付款方式、交割时间等。</p>
             <p>参与者不得恶意竞价或干扰拍卖秩序，否则主办方有权取消其参与资格。</p>
-            
+
             <h4>风险自担</h4>
             <p>参与者需自行承担拍卖过程中可能产生的风险，包括但不限于拍品真伪、品质、价值等。</p>
             <p>主办方不对拍品的真实性、完整性或适用性作任何明示或暗示的担保。</p>
-            
+
             <h4>法律责任</h4>
             <p>参与者在拍卖会中的行为需符合法律法规，若因违反法律或本协议导致损失或纠纷，参与者需自行承担全部责任。</p>
             <p>若参与者行为损害主办方或其他参与者的合法权益，主办方有权追究其法律责任。</p>
-            
+
             <h3>二、拍卖会规则协议</h3>
-            
+
             <h4>竞价规则</h4>
             <p>参与者需按照拍卖师的指示进行竞价，每次加价不得低于规定的最低加价幅度。</p>
             <p>竞价成功后，参与者需当场确认，并在规定时间内完成付款及交割手续。</p>
-            
+
             <h4>付款与交割</h4>
             <p>竞拍成功后，参与者需在规定时间内支付全款，逾期未支付者视为违约，主办方有权取消交易并追究违约责任。</p>
             <p>拍品的交割方式及时间以主办方通知为准，参与者需自行承担拍品的运输及保险费用。</p>
-            
+
             <h4>拍品描述与瑕疵</h4>
             <p>主办方将尽可能提供拍品的详细描述及图片，但不对拍品的瑕疵或缺陷承担任何责任。</p>
             <p>参与者应在拍卖前充分了解拍品情况，竞拍成功后不得以拍品存在瑕疵为由拒绝付款或交割。</p>
-            
+
             <h4>违约处理</h4>
             <p>若参与者未按约定支付款项或完成交割，主办方有权没收其已支付的保证金，并保留追究其法律责任的权利。</p>
             <p>若主办方因不可抗力或其他合理原因取消拍卖会，将退还参与者已支付的费用，但不承担其他赔偿责任。</p>
-            
+
             <h3>三、免责条款</h3>
-            
+
             <h4>不可抗力</h4>
             <p>如因自然灾害、战争、疫情等不可抗力因素导致拍卖会无法正常进行，主办方不承担任何责任。</p>
-            
+
             <h4>网络拍卖风险</h4>
             <p>若为线上拍卖会，参与者需自行确保网络环境稳定，因网络问题导致的竞价失败或交易中断，主办方不承担任何责任。</p>
-            
+
             <h4>拍品风险</h4>
             <p>参与者需自行承担拍品在运输、保管及使用过程中可能产生的风险，主办方不对拍品的损坏、丢失或贬值负责。</p>
-            
+
             <h3>四、其他条款</h3>
-            
+
             <h4>协议修改</h4>
             <p>主办方有权根据实际情况对本协议进行修改，修改后的协议将在公告后生效。</p>
-            
+
             <h4>争议解决</h4>
             <p>如因本协议产生争议，双方应友好协商解决；协商不成的，任何一方可向主办方所在地有管辖权的人民法院提起诉讼。</p>
-            
+
             <h4>协议生效</h4>
             <p>本协议自参与者报名成功之日起生效，具有法律效力。</p>
         </div>
@@ -194,12 +195,6 @@
           <el-radio-group v-model="selectedPayment">
             <el-radio :value="1" size="large" border  class="radio">余额</el-radio>
             <img src="@/assets/images/icons/qb.png" alt="余额" class="payicon">
-            <el-radio :value="2" size="large"  border class="radio">支付宝</el-radio>
-            <img src="@/assets/images/icons/zfb.png" alt="支付宝" class="payicon">
-            <el-radio :value="3" size="large" border  class="radio">微信</el-radio>
-            <img src="@/assets/images/icons/wx.png" alt="微信" class="payicon">
-            <el-radio :value="4" size="large" border  class="radio">银行卡</el-radio>
-            <img src="@/assets/images/icons/yhk.png" alt="银行卡" class="payicon">
           </el-radio-group>
         </div>
         </div>
@@ -226,7 +221,7 @@
           <h3>确认您的信息</h3>
             <div class="form-group">
               <label>邮箱:</label>
-              <input class="input" v-model="user.email" disabled /> 
+              <input class="input" v-model="user.email" disabled />
             </div>
             <div class="form-group">
               <label>电话:</label>
@@ -263,12 +258,6 @@
           <el-radio-group v-model="selectedPayment">
             <el-radio :value="1" size="large" border  class="radio">余额</el-radio>
             <img src="@/assets/images/icons/qb.png" alt="余额" class="payicon">
-            <el-radio :value="2" size="large"  border class="radio">支付宝</el-radio>
-            <img src="@/assets/images/icons/zfb.png" alt="支付宝" class="payicon">
-            <el-radio :value="3" size="large" border  class="radio">微信</el-radio>
-            <img src="@/assets/images/icons/wx.png" alt="微信" class="payicon">
-            <el-radio :value="4" size="large" border  class="radio">银行卡</el-radio>
-            <img src="@/assets/images/icons/yhk.png" alt="银行卡" class="payicon">
           </el-radio-group>
         </div>
         </div>
@@ -286,11 +275,14 @@
 </template>
   <script>
 import {getAuctionsByArtworkId} from '../utils/auctionService';
+import {getArtworkById} from '../utils/artworkService';
+import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 import {registerForAuction,checkUserRegistrationStatus} from '../utils/registerService';
 import {addFavorite,checkIsFavorite,removeFavorite} from '../utils/favoriteService';
 import {createOrder,updateOrderStatus} from '../utils/orderServices';
 import BidForAuction from '@/components/BidForAuction.vue';
-import { getUserById,updateUserInfo,updateBalance} from '@/utils/api';
+import { getUserById,updateUserInfo} from '@/utils/api';
 import { mapGetters } from 'vuex';
 import { mapState } from 'vuex';
 export default {
@@ -321,7 +313,7 @@ export default {
         paymentStatus: "Pending",
         shippingStatus: "Pending",
       },
-    }; 
+    };
   },
   computed: {
     ...mapState({
@@ -332,12 +324,18 @@ export default {
       return this.$route.params.artworkId;
     },
     artwork() {
-      return this.$store.getters.getArtwork;
+      const artwork = this.$store.getters.getArtwork;
+      return artwork && String(artwork.artworkId) === String(this.artworkId) ? artwork : null;
     },
   },
   async mounted() {
-    if (!this.artwork) {
-      await this.$store.dispatch('loadArtworkFromStorage');
+    try {
+      const artwork = await getArtworkById(this.artworkId);
+      await this.$store.dispatch('updateArtwork', artwork);
+      localStorage.setItem('artwork', JSON.stringify(artwork));
+    } catch (error) {
+      this.$message.error('加载艺术品信息失败');
+      return;
     }
 
     if (!this.artwork) {
@@ -352,6 +350,14 @@ export default {
     this.checkFavoriteStatus();
   },
   methods: {
+    async reportArtwork() {
+      if (!this.isLoggedIn) { this.$message.warning('请先登录'); return; }
+      try {
+        const { value } = await this.$prompt('请输入举报原因', '举报作品', { inputValidator: value => !!value?.trim() || '原因不能为空' });
+        await axios.post(`${API_BASE_URL}/api/reports`, null, { params: { reporterId: this.userId, artworkId: this.artworkId, reason: value } });
+        this.$message.success('举报已提交');
+      } catch (error) { if (error !== 'cancel' && error !== 'close') this.$message.error('举报提交失败'); }
+    },
     toBiding(){
       const now = new Date();
       const startTime = new Date(this.auctionInfo.startTime).getTime();
@@ -364,7 +370,7 @@ export default {
           position: 'bottom-right',
           duration: 2000
         });
-        return; 
+        return;
       }
       if (now > endTime) {
         this.$notify({
@@ -373,7 +379,7 @@ export default {
           position: 'bottom-right',
           duration: 2000
         });
-        return; 
+        return;
       }
       this.isBidding = !this.isBidding;
     },
@@ -466,36 +472,15 @@ export default {
         await new Promise(resolve => setTimeout(resolve, 2000));
         try {
             this.isPaying = true;
-            if(this.selectedPayment==2){
-            this.$message.success("支付宝成功")
-          }else if(this.selectedPayment==3){
-            this.$message.success("微信成功")
-          }else if(this.selectedPayment==4){
-            this.$message.success("银行卡成功")
-          }else{
-            const userData = await getUserById(this.userId);
-            let finalPrice;
-            if(artwork.saleType=='直售'){
-                finalPrice = artwork.fixedPrice
-            }else{
-                const response =await getAuctionsByArtworkId(artwork.artworkId)
-                finalPrice =  response.data.currentHighestBid
-            }
-            if(userData.walletBalance >= finalPrice){
               const orderResponse =await updateOrderStatus(this.userId,artwork.artworkId,'Paid');
-              const userResponse  =await updateBalance(this.userId,-finalPrice)
-              if(orderResponse &&userResponse){
+              if(orderResponse){
                 this.$router.push({ name: 'SalePage' });
                 this.$message.success("支付成功")
               }else{
                 this.$message.error("支付失败")
               }
-            }else{
-              this.$message.error("余额不足")
-            }
-        }
       } catch (error) {
-        this.$message.error(error.message || '支付失败，请重试');
+        this.$message.error(error.response?.data || '支付失败，请重试');
       } finally {
         this.drawer2 =false;
         this.drawer4 =false;
@@ -512,27 +497,14 @@ export default {
       await new Promise(resolve => setTimeout(resolve, 2000));
       try {
           this.isPaying = true;
-          if(this.selectedPayment==2){
-          this.$message.success("支付宝成功")
-        }else if(this.selectedPayment==3){
-          this.$message.success("微信成功")
-        }else if(this.selectedPayment==4){
-          this.$message.success("银行卡成功")
-        }else{
-          const userData = await getUserById(this.userId);
-              if(userData.walletBalance >= this.auctionInfo.depositAmount){
               const response =await registerForAuction(this.auctionInfo.auctionId,this.userId,this.auctionInfo.depositAmount);
               if(response){
                 this.$message.success("报名成功")
               }else{
                 this.$message.error("报名失败")
               }
-            }else{
-              this.$message.error("余额不足")
-            }
-        }
       } catch (error) {
-        this.$message.error(error.message || '支付失败，请重试');
+        this.$message.error(error.response?.data || '报名失败，请重试');
       } finally {
         this.drawer2 =false;
         this.drawer4 =false;
@@ -562,7 +534,7 @@ export default {
     },
     formatDate(dateString) {
       if (!dateString) {
-      return '无日期信息'; 
+      return '无日期信息';
       }
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
@@ -584,12 +556,12 @@ export default {
         this.$message.warning("请先登录");
         this.$router.push('/login-register');
       } else {
-        this.isLoading = true; 
+        this.isLoading = true;
         try {
           if (this.isFavorite) {
-            const response = await removeFavorite(this.userId, this.artwork.artworkId); 
+            const response = await removeFavorite(this.userId, this.artwork.artworkId);
             if (response) {
-              await new Promise((resolve) => setTimeout(resolve, 1000)); 
+              await new Promise((resolve) => setTimeout(resolve, 1000));
               await this.checkFavoriteStatus();
             } else {
               this.$message.error("取消收藏失败");
@@ -597,7 +569,7 @@ export default {
           } else {
             const response = await addFavorite(this.userId, this.artwork.artworkId);
             if (response) {
-              await new Promise((resolve) => setTimeout(resolve, 1000)); 
+              await new Promise((resolve) => setTimeout(resolve, 1000));
               await this.checkFavoriteStatus();
               this.$message.success("收藏成功");
             } else {
@@ -614,8 +586,8 @@ export default {
     },
     async checkFavoriteStatus() {
       try {
-        const response = await checkIsFavorite(this.userId,this.artwork.artworkId)   
-        this.isFavorite = response; 
+        const response = await checkIsFavorite(this.userId,this.artwork.artworkId)
+        this.isFavorite = response;
       } catch (error) {
         console.error('检查收藏状态失败', error);
       }
@@ -623,6 +595,5 @@ export default {
   }
 };
   </script>
-  
+
   <style scoped src="@/assets/css/Deal.css"></style>
-  

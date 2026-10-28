@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 
-const URL = 'http://localhost:10202/api/artworks';
+const URL = `${API_BASE_URL}/api/artworks`;
 //获取所有艺术品
 export const getAllArtworksWithImages = async() => {
     try {

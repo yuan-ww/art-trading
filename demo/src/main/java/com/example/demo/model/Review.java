@@ -1,10 +1,17 @@
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Reviews")
+@Table(
+        name = "Reviews",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_reviews_order_user",
+                columnNames = {"order_id", "user_id"}
+        )
+)
 public class Review {
 
     @Id
@@ -16,6 +23,7 @@ public class Review {
     private Order order;
 
     @ManyToOne
+    @JsonIgnoreProperties({"email", "password", "phone", "realName", "idCardNumber", "address", "walletBalance", "role"})
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 

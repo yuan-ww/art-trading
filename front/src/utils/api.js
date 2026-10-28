@@ -1,8 +1,9 @@
 
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 
-const API_URL = 'http://localhost:10202/api'; // 后端地址进行
+const API_URL = `${API_BASE_URL}/api`;
 
 // 获取用户信息
 export const getUserById = async (userId) => {

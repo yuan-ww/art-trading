@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
-const API_URL = 'http://localhost:10202/api/auctions';
+const API_URL = `${API_BASE_URL}/api/auctions`;
 
 // 获取所有拍卖
 export const getAllAuctions = async () => {
@@ -51,6 +52,7 @@ export const createAuction = async (auctionData) => {
     throw error;
   }
 };
+export const resubmitAuction = (auctionId, data) => axios.put(`${API_URL}/${auctionId}/resubmit`, data);
 
 // 更新拍卖
 export const updateAuction = async (auctionId, auctionData) => {

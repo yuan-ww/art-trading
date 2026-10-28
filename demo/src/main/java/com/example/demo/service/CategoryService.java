@@ -16,38 +16,59 @@ public class CategoryService {
 
     @Autowired
     private CategoryRepository categoryRepository;
+    private List<Category> cachedCategories;
+    private long cacheDeadline;
+    private static final long CACHE_MILLIS = 30_000L;
 
-    public List<Category> findAll() {
-        return categoryRepository.findAll();
+    public synchronized List<Category> findAll() {
+        if (cachedCategories == null || System.currentTimeMillis() >= cacheDeadline) {
+            cachedCategories = copyCategories(categoryRepository.findAll());
+            cacheDeadline = System.currentTimeMillis() + CACHE_MILLIS;
+        }
+        return copyCategories(cachedCategories);
+    }
+
+    private List<Category> copyCategories(List<Category> categories) {
+        return categories.stream().map(c -> {
+            Category copy = new Category(c.getName(), c.getDescription());
+            copy.setCategoryId(c.getCategoryId());
+            return copy;
+        }).toList();
     }
 
     public Optional<Category> findById(Integer id) {
         return categoryRepository.findById(id);
     }
 
-    public Category save(Category category) {
-        return categoryRepository.save(category);
+    public synchronized Category save(Category category) {
+        Category saved = categoryRepository.save(category);
+        cachedCategories = null;
+        return saved;
     }
   //创建分类
-  public int createCategory(Category category) {
+  public synchronized int createCategory(Category category) {
         if (categoryRepository.existsByName(category.getName())){
           return -1;
       }else{
           categoryRepository.save(category);
+          cachedCategories = null;
           return 0;
       }
   }
-    public Category update(Integer id, Category categoryDetails) {
+    public synchronized Category update(Integer id, Category categoryDetails) {
         Category category = categoryRepository.findById(id).orElseThrow();
         category.setName(categoryDetails.getName());
         category.setDescription(categoryDetails.getDescription());
-        return categoryRepository.save(category);
+        Category saved = categoryRepository.save(category);
+        cachedCategories = null;
+        return saved;
     }
    //删除分类
-    public void batchDeleteCategories(List<Integer> categoryIds) {
+    public synchronized void batchDeleteCategories(List<Integer> categoryIds) {
        System.out.println("Deleting categories with IDs: " + categoryIds);
         if (categoryIds != null && !categoryIds.isEmpty()) {
             categoryRepository.deleteAllByCategoryIdIn(categoryIds);
+            cachedCategories = null;
         } else {
             throw new IllegalArgumentException("列表为空");
         }

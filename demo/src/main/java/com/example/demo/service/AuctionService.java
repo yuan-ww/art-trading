@@ -2,29 +2,31 @@ package com.example.demo.service;
 
 import com.example.demo.model.Artwork;
 import com.example.demo.model.Auction;
-import com.example.demo.model.Order;
 import com.example.demo.repository.ArtworksRepository;
 import com.example.demo.repository.AuctionRepository;
-import com.example.demo.repository.OrderRepository;
+import com.example.demo.repository.AuctionRegistrationRepository;
+import com.example.demo.repository.BidRepository;
+import com.example.demo.service.AuctionSettlementService.SettlementResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class AuctionService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuctionService.class);
 
     @Autowired
     private AuctionRepository auctionRepository;
@@ -32,12 +34,13 @@ public class AuctionService {
     @Autowired
     private ArtworksRepository artworkRepository;
     @Autowired
-    private OrderRepository orderRepository;
+    private AuctionSettlementService auctionSettlementService;
     @Autowired
-    private OrderService orderService; // 用于生成订单
-
+    private NotificationService notificationService;
     @Autowired
-    private ArtworksRepository artworksRepository; // 用于获取艺术品
+    private AuctionRegistrationRepository auctionRegistrationRepository;
+    @Autowired
+    private BidRepository bidRepository;
     // 获取所有拍卖
     public List<Auction> getAllAuctions() {
         return auctionRepository.findAll();
@@ -53,29 +56,17 @@ public class AuctionService {
     // 创建新拍卖
     @Transactional
     public Auction createAuction(Auction auction) {
-        // 检查艺术品是否存在
-        Optional<Artwork> artwork = artworkRepository.findByArtworkId(auction.getArtworkId());
-        if (!artwork.isPresent()) {
-            Optional<Artwork> newArtwork = artworkRepository.findByArtworkId(auction.getArtwork().getArtworkId());
+        if (auction.getArtworkId() == null && auction.getArtwork() != null) {
             auction.setArtworkId(auction.getArtwork().getArtworkId());
-            if (!newArtwork.isPresent()){
-                throw new IllegalArgumentException("艺术品不存在");
-            }
         }
-        if (auction.getArtworkId() != null) {
-            Artwork artwork1 = artworkRepository.findById(auction.getArtworkId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "艺术品不存在"));
-            // 根据拍卖状态更新艺术品状态
-            if (Auction.AuctionStatus.审核中.equals(auction.getStatus())) {
-                artwork1.setStatus(Artwork.Status.valueOf("审核"));
-            } else if (Auction.AuctionStatus.进行中.equals(auction.getStatus())) {
-                artwork1.setStatus(Artwork.Status.valueOf("在售"));
-            } else if (Auction.AuctionStatus.已结束.equals(auction.getStatus()) || Auction.AuctionStatus.已取消.equals(auction.getStatus())) {
-                artwork1.setStatus(Artwork.Status.valueOf("已售"));
-            }
-            // 更新 artwork 信息
-            artworkRepository.save(artwork1);
-        }
+        validateAuctionDetails(auction);
+        Artwork artwork = artworkRepository.findById(auction.getArtworkId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "艺术品不存在"));
+
+        // 卖家提交的拍卖必须先审核，不能由请求体直接变成进行中或结束状态。
+        auction.setStatus(Auction.AuctionStatus.审核中);
+        artwork.setStatus(Artwork.Status.审核);
+        artworkRepository.save(artwork);
         return auctionRepository.save(auction);
     }
 
@@ -84,26 +75,35 @@ public class AuctionService {
     public Auction updateAuction(Integer auctionId, Auction updatedAuction) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "拍卖不存在"));
-        // 更新拍卖信息
+        if (auction.getVersion() != null && !auction.getVersion().equals(updatedAuction.getVersion())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "拍卖已更新，请刷新后重试");
+        }
+        if (auction.getStatus() != Auction.AuctionStatus.审核中) {
+            throw new IllegalStateException("拍卖审核完成后不能再修改；结束状态只能由结算流程产生");
+        }
+        if (updatedAuction.getArtworkId() != null && !updatedAuction.getArtworkId().equals(auction.getArtworkId())) {
+            throw new IllegalArgumentException("不能修改拍卖关联的艺术品");
+        }
+        validateAuctionDetails(updatedAuction);
+        Auction.AuctionStatus requestedStatus = updatedAuction.getStatus() == null
+                ? Auction.AuctionStatus.审核中
+                : updatedAuction.getStatus();
+        if (requestedStatus != Auction.AuctionStatus.审核中 && requestedStatus != Auction.AuctionStatus.进行中) {
+            throw new IllegalArgumentException("拍卖只能保持审核中或通过审核进入进行中；结束和取消必须走专用流程");
+        }
+
         auction.setStartingPrice(updatedAuction.getStartingPrice());
         auction.setDepositPercentage(updatedAuction.getDepositPercentage());
         auction.setDepositAmount(updatedAuction.getDepositAmount());
         auction.setEndTime(updatedAuction.getEndTime());
         auction.setStartTime(updatedAuction.getStartTime());
-        auction.setStatus(updatedAuction.getStatus());
-        if (updatedAuction.getArtworkId() != null) {
-            Artwork artwork = artworkRepository.findById(updatedAuction.getArtworkId())
+        auction.setStatus(requestedStatus);
+        if (requestedStatus == Auction.AuctionStatus.进行中) {
+            Artwork artwork = artworkRepository.findById(auction.getArtworkId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "艺术品不存在"));
-            // 根据拍卖状态更新艺术品状态
-            if (Auction.AuctionStatus.审核中.equals(updatedAuction.getStatus())) {
-                artwork.setStatus(Artwork.Status.valueOf("审核"));
-            } else if (Auction.AuctionStatus.进行中.equals(updatedAuction.getStatus())) {
-                artwork.setStatus(Artwork.Status.valueOf("在售"));
-            } else if (Auction.AuctionStatus.已结束.equals(updatedAuction.getStatus()) || Auction.AuctionStatus.已取消.equals(updatedAuction.getStatus())) {
-                artwork.setStatus(Artwork.Status.valueOf("已售"));
-            }
-            // 更新 artwork 信息
+            artwork.setStatus(Artwork.Status.在售);
             artworkRepository.save(artwork);
+            notificationService.send(artwork.getUserId(), "拍卖 " + auctionId + " 已通过审核");
         }
         return auctionRepository.save(auction);
     }
@@ -120,88 +120,103 @@ public class AuctionService {
     @Transactional
     public Auction approveAuction(Integer auctionId) {
 
-        Optional<Auction> auction = auctionRepository.findById(auctionId);
-        if (!auction.isPresent()) {
-            throw new IllegalArgumentException("拍卖不存在");
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new IllegalArgumentException("拍卖不存在"));
+        if (auction.getStatus() != Auction.AuctionStatus.审核中) {
+            throw new IllegalStateException("只有审核中的拍卖可以通过");
         }
-        auction.get().setStatus(Auction.AuctionStatus.进行中);  // 设置为“进行中”
-        return auctionRepository.save(auction.get());
+        Artwork artwork = artworkRepository.findById(auction.getArtworkId())
+                .orElseThrow(() -> new IllegalStateException("艺术品不存在"));
+        auction.setStatus(Auction.AuctionStatus.进行中);
+        artwork.setStatus(Artwork.Status.在售);
+        artworkRepository.save(artwork);
+        notificationService.send(artwork.getUserId(), "拍卖 " + auctionId + " 已通过审核");
+        return auctionRepository.save(auction);
     }
 
     // 拒绝拍卖，更新状态
     @Transactional
     public Auction rejectAuction(Integer auctionId) {
-        Optional<Auction> auction = auctionRepository.findById(auctionId);
-        if (!auction.isPresent()) {
-            throw new IllegalArgumentException("拍卖不存在");
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new IllegalArgumentException("拍卖不存在"));
+        if (auction.getStatus() != Auction.AuctionStatus.审核中) {
+            throw new IllegalStateException("只有审核中的拍卖可以拒绝");
         }
-        auction.get().setStatus(Auction.AuctionStatus.已取消);  // 设置为“已取消”
-        return auctionRepository.save(auction.get());
+        auction.setStatus(Auction.AuctionStatus.已取消);
+        Artwork artwork = artworkRepository.findById(auction.getArtworkId()).orElseThrow(() -> new IllegalStateException("艺术品不存在"));
+        notificationService.send(artwork.getUserId(), "拍卖 " + auctionId + " 未通过审核，可修改后重新提交");
+        return auctionRepository.save(auction);
     }
 
     public List<Auction> getAuctionsByArtworkIds(List<Integer> artworkIds) {
         return auctionRepository.findByArtworkIdIn(artworkIds);
     }
 
+    public SettlementResult settleAuction(Integer auctionId) {
+        return auctionSettlementService.settleAuction(auctionId);
+    }
+    public Page<Auction> getAuctionPage(Auction.AuctionStatus status, Pageable page) {
+        return status == null ? auctionRepository.findAll(page) : auctionRepository.findByStatus(status, page);
+    }
+
     @Transactional
-    public boolean settleAuction(Integer auctionId) throws Exception {
-        // 获取拍卖信息
-        Optional<Auction> auctionOptional = auctionRepository.findById(auctionId);
-        if (!auctionOptional.isPresent()) {
-            throw new Exception("拍卖不存在");
+    public Auction resubmitAuction(Integer auctionId, Auction details) {
+        Auction auction = auctionRepository.findByAuctionIdForUpdate(auctionId)
+                .orElseThrow(() -> new IllegalArgumentException("拍卖不存在"));
+        if (auction.getStatus() != Auction.AuctionStatus.已取消) throw new IllegalStateException("仅已驳回拍卖可重新提交");
+        if (auction.getHighestBidder() != null || (auction.getCurrentHighestBid() != null && auction.getCurrentHighestBid().signum() > 0)) {
+            throw new IllegalStateException("有历史出价的拍卖不能重新提交");
         }
-        Auction auction = auctionOptional.get();
-        if (auction.getCurrentHighestBid().compareTo(BigDecimal.ZERO) <= 0) {
-            auction.setStatus(Auction.AuctionStatus.流拍);
-            auctionRepository.save(auction);
+        if (auctionRegistrationRepository.countByAuction_AuctionId(auctionId) > 0
+                || bidRepository.countByAuction_AuctionId(auctionId) > 0) {
+            throw new IllegalStateException("已有报名或出价记录的拍卖不能重新提交");
         }
-        if (auction.getCurrentHighestBid() != null && auction.getHighestBidder() != null) {
-            Integer artworkId = auction.getArtworkId();
-            Integer buyerId = auction.getHighestBidder().getUserId();
-            Integer senderId = null;
-            Optional<Artwork> artworkOptional = artworksRepository.findById(artworkId);
-            if (artworkOptional.isPresent()) {
-                Artwork artwork = artworkOptional.get();
-                senderId = artwork.getUserId();
-            } else {
-                throw new RuntimeException("艺术品未找到，无法获取卖方信息");
+        if (details.getArtworkId() != null && !details.getArtworkId().equals(auction.getArtworkId())) throw new IllegalArgumentException("不能更换艺术品");
+        details.setArtworkId(auction.getArtworkId());
+        validateAuctionDetails(details);
+        if (!details.getEndTime().isAfter(LocalDateTime.now(ZoneId.of("Asia/Shanghai")))) {
+            throw new IllegalArgumentException("结束时间必须晚于当前时间");
+        }
+        auction.setStartingPrice(details.getStartingPrice()); auction.setDepositPercentage(details.getDepositPercentage());
+        auction.setDepositAmount(details.getDepositAmount()); auction.setStartTime(details.getStartTime()); auction.setEndTime(details.getEndTime());
+        auction.setStatus(Auction.AuctionStatus.审核中);
+        Artwork artwork = artworkRepository.findById(auction.getArtworkId()).orElseThrow(() -> new IllegalStateException("艺术品不存在"));
+        artwork.setStatus(Artwork.Status.审核); artworkRepository.save(artwork);
+        return auctionRepository.save(auction);
+    }
+
+    public void updateAuctionStatusToEnded() {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Shanghai"));
+        List<Auction> auctions = auctionRepository.findByEndTimeLessThanEqualAndStatus(
+                now,
+                Auction.AuctionStatus.进行中
+        );
+        for (Auction auction : auctions) {
+            try {
+                SettlementResult result = auctionSettlementService.settleAuction(auction.getAuctionId());
+                logger.info("Processed expired auction ID: {} with result: {}", auction.getAuctionId(), result);
+            } catch (RuntimeException e) {
+                logger.error("Failed to process expired auction ID: {}", auction.getAuctionId(), e);
             }
-            BigDecimal finalPrice = auction.getCurrentHighestBid();
-
-            Order order = new Order();
-            order.setArtworkId(artworkId);
-            order.setBuyerId(buyerId);
-            order.setSellerId(senderId);
-            order.setFinalPrice(finalPrice);
-            orderService.createOrder(order);
-            Artwork artwork = artworkOptional.get();
-            artwork.setStatus(Artwork.Status.已售);
-            artworksRepository.save(artwork);
-
-            auction.setStatus(Auction.AuctionStatus.已结束);
-            auctionRepository.save(auction);
-            return true;
-        } else {
-            throw new Exception("拍卖没有出价，无法结算");
         }
     }
-    public void updateAuctionStatusToEnded() {
-        LocalDateTime currentTime = LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
-        System.out.println("Current time: " + currentTime);
-        LocalDateTime timePlus8Hours = currentTime.plusHours(8);
-        List<Auction> auctions = auctionRepository.findByEndTimeLessThanEqualAndStatus(timePlus8Hours, Auction.AuctionStatus.valueOf("进行中"));
-        System.out.println("查询到的拍卖数量: " + auctions.size());
-        if (auctions.isEmpty()) {
-            System.out.println("没有找到符合条件的拍卖");
-        } else {
-            auctions.forEach(auction -> {
-                System.out.println("处理拍卖ID: " + auction.getAuctionId());  // 打印拍卖ID
-                try {
-                    settleAuction(auction.getAuctionId());
-                } catch (Exception e) {
-                    System.err.println("处理拍卖时出错: " + e.getMessage());
-                }
-            });
+
+    private void validateAuctionDetails(Auction auction) {
+        if (auction.getArtworkId() == null) {
+            throw new IllegalArgumentException("艺术品不能为空");
+        }
+        if (auction.getStartingPrice() == null || auction.getStartingPrice().signum() <= 0) {
+            throw new IllegalArgumentException("起拍价必须大于 0");
+        }
+        if (auction.getDepositPercentage() != null && auction.getDepositPercentage().signum() < 0) {
+            throw new IllegalArgumentException("保证金比例不能为负数");
+        }
+        if (auction.getDepositAmount() != null && auction.getDepositAmount().signum() < 0) {
+            throw new IllegalArgumentException("保证金金额不能为负数");
+        }
+        if (auction.getStartTime() == null || auction.getEndTime() == null
+                || !auction.getEndTime().isAfter(auction.getStartTime())) {
+            throw new IllegalArgumentException("结束时间必须晚于开始时间");
         }
     }
 }

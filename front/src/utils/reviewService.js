@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
-const API_BASE_URL = 'http://localhost:10202/api/reviews'; 
+const REVIEWS_API_URL = `${API_BASE_URL}/api/reviews`;
 export const getAllReviews = async () => {
     try {
-        const response = await axios.get(API_BASE_URL);
+        const response = await axios.get(REVIEWS_API_URL);
         return response.data;
     } catch (error) {
         console.error('获取所有评论失败:', error);
@@ -13,7 +14,7 @@ export const getAllReviews = async () => {
 
 export const getReviewById = async (id) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/getReviewById/${id}`);
+        const response = await axios.get(`${REVIEWS_API_URL}/getReviewById/${id}`);
         return response.data;
     } catch (error) {
         console.error(`获取评论 (ID: ${id}) 失败:`, error);
@@ -23,7 +24,7 @@ export const getReviewById = async (id) => {
 
 export const getReviewsByUserId = async (userId) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/getReviewsByUserId/${userId}`);
+        const response = await axios.get(`${REVIEWS_API_URL}/getReviewsByUserId/${userId}`);
         return response.data;
     } catch (error) {
         console.error(`获取用户 (ID: ${userId}) 的评论失败:`, error);
@@ -33,7 +34,7 @@ export const getReviewsByUserId = async (userId) => {
 
 export const getReviewsByOrderId = async (orderId) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/getReviewsByOrderId/${orderId}`);
+        const response = await axios.get(`${REVIEWS_API_URL}/getReviewsByOrderId/${orderId}`);
         return response.data;
     } catch (error) {
         console.error(`获取订单 (ID: ${orderId}) 的评论失败:`, error);
@@ -43,7 +44,7 @@ export const getReviewsByOrderId = async (orderId) => {
 
 export const createReview = async (reviewData) => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/createReview`, reviewData);
+        const response = await axios.post(`${REVIEWS_API_URL}/createReview`, reviewData);
         return response.data;
     } catch (error) {
         console.error('创建评论失败:', error);
@@ -53,7 +54,7 @@ export const createReview = async (reviewData) => {
 
 export const deleteReview = async (id) => {
     try {
-        const response = await axios.delete(`${API_BASE_URL}/deleteReview/${id}`);
+        const response = await axios.delete(`${REVIEWS_API_URL}/deleteReview/${id}`);
         return response.data;
     } catch (error) {
         console.error(`删除评论 (ID: ${id}) 失败:`, error);

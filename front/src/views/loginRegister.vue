@@ -44,6 +44,7 @@
 <script>
 import { mapActions } from 'vuex';
 import { getUserById} from '@/utils/api';
+import { API_BASE_URL } from '@/config/api';
 export default {
 	
 	name: 'LoginRegister',
@@ -95,7 +96,7 @@ export default {
 			if (this.form.useremail && this.form.userpwd && !this.emailError && !this.passwordError) {
 				this.loading = true;
 				try {
-					const response = await this.$axios.post('http://localhost:10202/api/user/login', {
+					const response = await this.$axios.post(`${API_BASE_URL}/api/user/login`, {
 						email: this.form.useremail,
 						password: this.form.userpwd
 					});
@@ -133,7 +134,7 @@ export default {
 					this.$store.commit('setUser', {
 						username: user.username,
 						id: user.id,
-						avatarUrl: user.avatarUrl || 'http://localhost:10202/images/avatars/default.png',
+						avatarUrl: user.avatarUrl || `${API_BASE_URL}/images/avatars/default.png`,
 						role: user.role || 'User',
 					});
 					this.$store.commit('setLoginStatus', true); 
@@ -157,7 +158,7 @@ export default {
 		register() {
 			if (this.form.username && this.form.useremail && this.form.userpwd && !this.emailError && !this.passwordError) {
 				this.loading = true;
-				this.$axios.post('http://localhost:10202/api/user/add', {
+				this.$axios.post(`${API_BASE_URL}/api/user/add`, {
 					username: this.form.username,
 					email: this.form.useremail,
 					password: this.form.userpwd
@@ -186,6 +187,9 @@ export default {
 				case -3:
 					this.emailExisted = true;
 					this.nameExisted = true;
+					break;
+				case -4:
+					alert("密码不能为空！");
 					break;
 			}
 		}

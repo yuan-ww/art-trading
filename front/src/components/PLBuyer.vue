@@ -1,5 +1,5 @@
 <template>
-    <div > 
+    <div >
             <el-row class="toolbar" :gutter="20" style="margin-bottom: 20px;">
               <el-col :span="2">
                   <el-button  @click="handleStatusChange('')" >显示全部</el-button>
@@ -13,14 +13,15 @@
                 <el-col :span="8">
                 <el-input
                   v-model="searchQuery"
+                   @input="scheduleSearch"
                    placeholder="请输入艺术品名搜索"
                    clearable
                 />
               </el-col>
-              <el-col :span="2">  
+              <el-col :span="2">
               </el-col>
               <el-col :span="8">
-                <div class="statistics">共 {{ filteredOrders.length }} 条记录</div>
+                <div class="statistics">共 {{ total }} 条记录</div>
               </el-col>
             </el-row>
             <div class="table-container">
@@ -56,6 +57,7 @@
                             <el-button v-if="order.paymentStatus ==='Pending'" class="shipButton" @click="handlePay(order)">支付</el-button>
                             <el-button :disabled="order.shippingStatus === 'Pending'" v-else class="shipButton" @click="checkShipping(order)">物流</el-button>
                             <el-button class="viewButton" @click="handleViewDetails(order.artworkId)">信息</el-button>
+                            <el-button v-if="order.paymentStatus === 'Paid' && order.shippingStatus !== 'Pending'" @click="requestAfterSale(order)">申请退货</el-button>
                             <el-tag v-if="order.shippingStatus !=='Delivered'" class="custom-tag" style="margin-top: 20px;" :type="getStatusType(order.paymentStatus)">
                                     {{ getPaymentStatus(order.paymentStatus) }}
                             </el-tag>
@@ -96,7 +98,7 @@
                                 </div>
                             </div>
                             </el-popover>
-                            <el-popconfirm 
+                            <el-popconfirm
                                 v-if="order.shippingStatus ==='Delivered'"
                                 title="确定删除订单?"
                                 @confirm="() => handDeleteOrder(order)"
@@ -116,6 +118,7 @@
               <div v-else-if="!isLoading" class="nodata">
               <p>没有数据~</p>
               </div>
+              <el-pagination v-if="total > 20" layout="prev, pager, next" :total="total" :page-size="20" :current-page="page + 1" @current-change="changePage" />
           </div>
             <el-dialog
               v-model="infodialogVisible"
@@ -166,15 +169,15 @@
                   <el-col>
                     <div v-if="imageUrls && imageUrls.length > 0" class="image-preview-container">
                         <div v-for="(image, index) in imageUrls" :key="index" class="image-preview-wrapper">
-                            <img 
+                            <img
                             :src="image.imageUrl"
-                            alt="Artwork Image" 
+                            alt="Artwork Image"
                             class="image-preview"
                             @click="viewImage(image.imageUrl)"
                             />
                         </div>
                     </div>
-  
+
                   </el-col>
                   </el-row>
               </el-form>
@@ -195,12 +198,6 @@
                 <el-radio-group v-model="selectedPayment">
                     <el-radio :value="1" size="large" border  class="radio">余额</el-radio>
                     <img src="@/assets/images/icons/qb.png" alt="余额" class="payicon">
-                    <el-radio :value="2" size="large"  border class="radio">支付宝</el-radio>
-                    <img src="@/assets/images/icons/zfb.png" alt="支付宝" class="payicon">
-                    <el-radio :value="3" size="large" border  class="radio">微信</el-radio>
-                    <img src="@/assets/images/icons/wx.png" alt="微信" class="payicon">
-                    <el-radio :value="4" size="large" border  class="radio">银行卡</el-radio>
-                    <img src="@/assets/images/icons/yhk.png" alt="银行卡" class="payicon">
                 </el-radio-group>
                 </div>
                 </div>
@@ -244,6 +241,7 @@
                             <el-descriptions-item label="收货电话">{{ shippingInfo.receiverPhone }}</el-descriptions-item>
                             <el-descriptions-item label="收货地址">{{ shippingInfo.receiverAddress }}</el-descriptions-item>
                         </el-descriptions>
+                        <ShippingTimeline :shipping-id="shippingInfo.shippingId" />
                         </div>
                 </div>
             </template>
@@ -258,18 +256,20 @@
             </el-drawer>
           </div>
   </template>
-  
+
   <script>
   import {fetchArtworkImages,getArtworkById} from '../utils/artworkService';
   import { getShippingByOrderId,updateShippingStatus} from "@/utils/shippingService";
-  import {getOrdersByBuyerId,updateOrderStatus,handleExpiredOrder,deleteOrder} from '../utils/orderServices';
-  import { getUserById,updateBalance} from '../utils/api';
+  import {getParticipantOrdersPage,updateOrderStatus,handleExpiredOrder,deleteOrder} from '../utils/orderServices';
+  import { getUserById} from '../utils/api';
   import { createReview,getReviewsByOrderId} from '../utils/reviewService';
-  import { getAuctionsByArtworkId} from '../utils/auctionService';
   import { mapState } from 'vuex';
+  import { requestReturn } from '../utils/afterSaleService';
+  import ShippingTimeline from './ShippingTimeline.vue';
 
 
   export default {
+    components: { ShippingTimeline },
     data() {
       return {
         selectedImageUrl: "",
@@ -278,15 +278,16 @@
         drawer1:false,
         imageUrls:[],
         OrderList:[],
+        page: 0, total: 0, searchTimer: null, requestSequence: 0,
         now: Date.now(),
         selectedPayment: 1,
         order:'',
         searchQuery: '',
-        selectedPaymentStatus: null, 
-        selectedShippingStatus: null, 
+        selectedPaymentStatus: null,
+        selectedShippingStatus: null,
         selectedCategories: [] ,
         editDialogVisible: false,
-        infodialogVisible: false, 
+        infodialogVisible: false,
         selectedArtworkInfo: {},
         shippingInfo:{},
         reviewData:{
@@ -302,16 +303,7 @@
         userId: state => state.user.id,
         }),
         filteredOrders() {
-        return this.OrderList.filter(order => {
-        const nameMatch = order.artwork?.name?.toLowerCase().includes(this.searchQuery.toLowerCase());
-        const paymentMatch = this.selectedPaymentStatus
-            ? order.paymentStatus === this.selectedPaymentStatus
-            : true;
-        const shippingMatch = this.selectedShippingStatus
-            ? order.shippingStatus === this.selectedShippingStatus
-            : true;
-        return nameMatch && paymentMatch && shippingMatch;
-      });
+        return this.OrderList;
     }
     },
     async mounted() {
@@ -324,6 +316,18 @@
         clearInterval(this.timer);
     },
     methods: {
+        scheduleSearch() { clearTimeout(this.searchTimer); this.searchTimer = setTimeout(() => this.resetPage(), 300); },
+        resetPage() { this.page = 0; this.fetchOrderList(); },
+        changePage(page) { this.page = page - 1; this.fetchOrderList(); },
+        async requestAfterSale(order) {
+            try {
+                const { value } = await this.$prompt('请输入退货原因', '申请退货', { inputValidator: value => !!value?.trim() || '原因不能为空' });
+                await requestReturn(order.orderId, value);
+                this.$message.success('申请已提交，请联系卖家确认退回');
+            } catch (error) {
+                if (error !== 'cancel' && error !== 'close') this.$message.error(error.response?.data || '申请失败');
+            }
+        },
         async handDeleteOrder(order){
             try{
                 const response =await deleteOrder(order.orderId);
@@ -398,7 +402,7 @@
                 const response =await getShippingByOrderId(order.orderId)
                 if(response){
                     this.shippingInfo = response;
-                }              
+                }
             } catch (error) {
                 console.log(error)
             }
@@ -410,14 +414,17 @@
         handleStatusChange() {
             this.selectedPaymentStatus = null;
             this.selectedShippingStatus = null;
+            this.resetPage();
         },
         togglePaymentStatus(status) {
-            this.selectedPaymentStatus = status; 
-            this.selectedShippingStatus = null; 
+            this.selectedPaymentStatus = status;
+            this.selectedShippingStatus = null;
+            this.resetPage();
         },
         toggleShippingStatus(status) {
-            this.selectedShippingStatus = status; 
+            this.selectedShippingStatus = status;
             this.selectedPaymentStatus = null;
+            this.resetPage();
         },
         async paySaleClick(artwork){
         const loading = this.$loading({
@@ -428,35 +435,14 @@
         await new Promise(resolve => setTimeout(resolve, 2000));
         try {
             this.isPaying = true;
-            if(this.selectedPayment==2){
-            this.$message.success("支付宝成功")
-          }else if(this.selectedPayment==3){
-            this.$message.success("微信成功")
-          }else if(this.selectedPayment==4){
-            this.$message.success("银行卡成功")
-          }else{
-            const userData = await getUserById(this.userId);
-            let finalPrice;
-            if(artwork.saleType=='直售'){
-                finalPrice = artwork.fixedPrice
-            }else{
-                const response =await getAuctionsByArtworkId(artwork.artworkId)
-                finalPrice =  response.data.currentHighestBid
-            }
-            if(userData.walletBalance >= finalPrice){
               const orderResponse =await updateOrderStatus(this.userId,artwork.artworkId,'Paid');
-              const userResponse  =await updateBalance(this.userId,-finalPrice)
-              if(orderResponse && userResponse){
+              if(orderResponse){
                 this.$message.success("支付成功")
               }else{
                 this.$message.error("支付失败")
               }
-            }else{
-              this.$message.error("余额不足")
-            }
-        }
       } catch (error) {
-        this.$message.error(error.message || '支付失败，请重试');
+        this.$message.error(error.response?.data || '支付失败，请重试');
       } finally {
         this.drawer =false;
         this.isPaying = false;
@@ -465,7 +451,7 @@
       }
     },
         resetEditForm() {
-        this.selectedImageUrl = ""; 
+        this.selectedImageUrl = "";
         this.imageView = false,
         this.ImageUrls=[];
         },
@@ -473,26 +459,30 @@
             this.selectedCategories = val;
         },
         async fetchOrderList() {
+        const sequence = ++this.requestSequence;
         this.isLoading = true;
         try {
-            const orders = await getOrdersByBuyerId(this.userId);
-            this.OrderList = await Promise.all(orders.map(async order => {
-            order.artwork = await getArtworkById(order.artworkId);
-            const images = await fetchArtworkImages(order.artworkId);
-            order.seller = await getUserById(order.sellerId);
-            order.imageUrl = images.data.length > 0 ? images.data[0].imageUrl : ''; 
-            return order;
-            }));
+            const params = { buyerId: this.userId, page: this.page, size: 20 };
+            if (this.searchQuery.trim()) params.keyword = this.searchQuery.trim();
+            if (this.selectedPaymentStatus) params.paymentStatus = this.selectedPaymentStatus;
+            if (this.selectedShippingStatus) params.shippingStatus = this.selectedShippingStatus;
+            const result = await getParticipantOrdersPage(params);
+            const orders = result.content.map(order => ({ ...order, artwork: {
+                artworkId: order.artworkId, name: order.artworkName || '作品已不存在', author: order.artworkAuthor || ''
+            }}));
+            if (sequence !== this.requestSequence) return;
+            this.OrderList = orders;
+            this.total = result.totalElements;
         } catch (error) {
             console.error('获取订单失败:', error);
             this.$message.error('获取订单失败，请稍后重试');
         }
-        this.isLoading = false;
+        if (sequence === this.requestSequence) this.isLoading = false;
         },
         async handleViewDetails(artworkId){
             const response=await getArtworkById (artworkId)
             this.selectedArtworkInfo = response;
-            this.fetchImages(this.selectedArtworkInfo.artworkId); 
+            this.fetchImages(this.selectedArtworkInfo.artworkId);
             this.infodialogVisible = true;
         },
         fetchImages(artworkId) {
@@ -505,11 +495,11 @@
             })
         },
         viewImage(imageUrl) {
-            this.selectedImageUrl = imageUrl; 
+            this.selectedImageUrl = imageUrl;
             this.imageView = true;
         },
         closeImage(){
-            this.selectedImageUrl = ""; 
+            this.selectedImageUrl = "";
             this.imageView = false;
         },
         formatDate(date) {
@@ -517,7 +507,7 @@
                 localDate.setHours(localDate.getHours() - 0);
                 const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
                 return localDate.toLocaleDateString('zh-CN', options);
-            }, 
+            },
         getDeadline(date) {
             const deadline = new Date(date);
             deadline.setDate(deadline.getDate() + 1);
@@ -586,7 +576,7 @@
 
       if (remaining <= 0) {
         if(order.paymentStatus==='Pending'){
-            this.handleTimeout(order); 
+            this.handleTimeout(order);
         }
         return "00:00:00";
       }
@@ -599,7 +589,18 @@
       return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
     },
     async handleTimeout(order) {
-        await handleExpiredOrder(order.orderId)
+        if (order.timeoutHandling) {
+          return;
+        }
+        order.timeoutHandling = true;
+        try {
+          await handleExpiredOrder(order.orderId);
+          await this.fetchOrderList();
+        } catch (error) {
+          console.error('处理超时订单失败:', error);
+        } finally {
+          order.timeoutHandling = false;
+        }
     },
     },
   };

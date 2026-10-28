@@ -1,4 +1,5 @@
 import { createStore } from 'vuex';
+import axios from 'axios';
 
 export default createStore({
   state: {
@@ -44,7 +45,12 @@ export default createStore({
       commit('setUser', user);
       commit('setLoginStatus', true);
     },
-    logout({ commit }) {
+    async logout({ commit }) {
+      try {
+        await axios.post('/api/user/logout');
+      } catch (error) {
+        // Clear local state even when the server session has already expired.
+      }
       localStorage.removeItem('user');
       localStorage.removeItem('isLoggedIn');
       commit('setUser', { username: '未登录', avatarUrl: '', id: null,role:null });

@@ -15,13 +15,14 @@ import java.util.ArrayList;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-import java.util.UUID;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class ArtworksService {
@@ -31,20 +32,25 @@ public class ArtworksService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final ArtworkImageRepository artworkImageRepository;
+    private final ImageUploadService imageUploadService;
     private static final Logger logger = Logger.getLogger(ArtworksService.class.getName());
     @Value("${uploads.path}")
     private String uploadDir;
+    @Value("${app.public-base-url}")
+    private String publicBaseUrl;
 
 
     @Autowired
     public ArtworksService(ArtworksRepository artworksRepository,
                            CategoryRepository categoryRepository,
                            UserRepository userRepository,
-                           ArtworkImageRepository artworkImageRepository) {
+                           ArtworkImageRepository artworkImageRepository,
+                           ImageUploadService imageUploadService) {
         this.artworksRepository = artworksRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.artworkImageRepository = artworkImageRepository;
+        this.imageUploadService = imageUploadService;
     }
     public List<Artwork> findAll() {
         List<Artwork> artworks=artworksRepository.findAll();
@@ -61,16 +67,20 @@ public class ArtworksService {
         return artworksRepository.save(artwork);
     }
     //创建艺术品
+    @Transactional
     public Artwork createArtwork(Artwork artwork, MultipartFile[] images) {
+        imageUploadService.validateAll(images);
         Category category = categoryRepository.findByCategoryId(artwork.getCategoryId()).orElse(null);
         User user = userRepository.findByUserId(artwork.getUserId()).orElse(null);
-        if (category == null && user == null) {
+        if (category == null || user == null) {
             throw new IllegalArgumentException("Category or User not found.");
         }
         artwork.setCategory(category);
         artwork.setUser(user);
         artwork = artworksRepository.save(artwork);
 
+        List<String> storedImageUrls = new ArrayList<>();
+        try {
         if (images != null && images.length > 0) {
             List<ArtworkImage> artworkImages = new ArrayList<>();
             for (MultipartFile image : images) {
@@ -78,6 +88,7 @@ public class ArtworksService {
                 if (imageUrl == null) {
                     throw new RuntimeException("Image upload failed");
                 }
+                storedImageUrls.add(imageUrl);
                 // 创建 ArtworkImage 实体并关联图片 URL
                 ArtworkImage artworkImage = new ArtworkImage();
                 artworkImage.setImageUrl(imageUrl);
@@ -88,6 +99,11 @@ public class ArtworksService {
         }
 
         return artworksRepository.save(artwork);  // 保存包含图片的艺术品
+        } catch (RuntimeException e) {
+            // 数据库事务会回滚；同步清除本次已经写入磁盘的文件。
+            storedImageUrls.forEach(this::deleteImageFileQuietly);
+            throw e;
+        }
     }
     //添加拍品时同时创建拍卖
     @Transactional
@@ -102,18 +118,7 @@ public class ArtworksService {
         return savedArtwork;
     }
     public String uploadImage(MultipartFile file) {
-        // 为图片生成唯一文件名
-        String uniqueFileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        Path path = Paths.get(uploadDir, uniqueFileName);
-        try {
-            Files.createDirectories(path.getParent());
-            Files.write(path, file.getBytes());
-            // 返回图片的 URL 地址
-            return "http://localhost:10202/uploads/" + uniqueFileName;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;  // 发生错误时返回 null
-        }
+        return imageUploadService.storeArtwork(file, Paths.get(uploadDir), publicBaseUrl + "/uploads/");
     }
     @Transactional
     public Artwork updateArtworkStatus(Integer artworkId, String status) {
@@ -127,12 +132,16 @@ public class ArtworksService {
         // 保存更新
         return artworksRepository.save(artwork);
     }
+    @Transactional
     public boolean updateArtwork(Integer artworkId, Artwork updatedArtwork) {
         Optional<Artwork> existingArtworkOptional = artworksRepository.findByArtworkId(artworkId);
 
         if (existingArtworkOptional.isPresent()) {
             // 获取 Artwork 对象
             Artwork artwork = existingArtworkOptional.get();
+            if (updatedArtwork.getVersion() == null || !updatedArtwork.getVersion().equals(artwork.getVersion())) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "作品已更新，请刷新后重试");
+            }
             // 更新艺术品的基本信息
             artwork.setName(updatedArtwork.getName());
             artwork.setDescription(updatedArtwork.getDescription());
@@ -207,6 +216,8 @@ public class ArtworksService {
             String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
             // 创建文件路径
             Path filePath = Paths.get(uploadDir, fileName);
+            int extension = fileName.lastIndexOf('.');
+            if (extension > 0) Files.deleteIfExists(Paths.get(uploadDir, "thumbnails", fileName.substring(0, extension) + ".png"));
             // 删除文件
             if (Files.exists(filePath)) {
                 Files.delete(filePath);  // 删除文件
@@ -217,6 +228,20 @@ public class ArtworksService {
         } catch (IOException e) {
             logger.log(Level.SEVERE, "删除图片文件失败: " + imageUrl, e);
             throw new RuntimeException("删除图片文件失败: " + imageUrl, e);
+        }
+    }
+    public Page<Artwork> findPage(Artwork.Status status, String saleType, Pageable pageable) {
+        if (status != null && saleType != null && !saleType.isBlank()) return artworksRepository.findByStatusAndSaleType(status, saleType, pageable);
+        if (status != null) return artworksRepository.findByStatus(status, pageable);
+        if (saleType != null && !saleType.isBlank()) return artworksRepository.findBySaleType(saleType, pageable);
+        return artworksRepository.findAll(pageable);
+    }
+
+    private void deleteImageFileQuietly(String imageUrl) {
+        try {
+            deleteImageFile(imageUrl);
+        } catch (RuntimeException e) {
+            logger.log(Level.WARNING, "回滚图片文件失败: " + imageUrl, e);
         }
     }
 

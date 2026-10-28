@@ -1,5 +1,5 @@
 <template>
-    <div > 
+    <div >
             <el-row class="toolbar" :gutter="20" style="margin-bottom: 20px;">
               <el-col :span="2">
                   <el-button  @click="handleStatusChange('')" >显示全部</el-button>
@@ -14,13 +14,14 @@
                 <el-input
                   v-model="searchQuery"
                    placeholder="请输入艺术品名搜索"
+                   @input="scheduleSearch"
                    clearable
                 />
               </el-col>
-              <el-col :span="2">  
+              <el-col :span="2">
               </el-col>
               <el-col :span="8">
-                <div class="statistics">共 {{ filteredOrders.length }} 条记录</div>
+                <div class="statistics">共 {{ total }} 条记录</div>
               </el-col>
             </el-row>
             <div class="table-container">
@@ -45,7 +46,7 @@
                   </el-table-column>
               <el-table-column  label="操作" width="200">
                 <template #default="{ row }">
-                    <el-popconfirm 
+                    <el-popconfirm
                             title="确定删除订单?"
                             @confirm="() => handleDelete(row)"
                         >
@@ -56,6 +57,7 @@
                 </template>
               </el-table-column>
             </el-table>
+            <el-pagination layout="prev, pager, next" :total="total" :page-size="20" :current-page="page + 1" @current-change="changePage" />
           </div>
             <el-dialog
               v-model="infodialogVisible"
@@ -106,15 +108,15 @@
                   <el-col>
                     <div v-if="imageUrls && imageUrls.length > 0" class="image-preview-container">
                         <div v-for="(image, index) in imageUrls" :key="index" class="image-preview-wrapper">
-                            <img 
+                            <img
                             :src="image.imageUrl"
-                            alt="Artwork Image" 
+                            alt="Artwork Image"
                             class="image-preview"
                             @click="viewImage(image.imageUrl)"
                             />
                         </div>
                     </div>
-  
+
                   </el-col>
                   </el-row>
               </el-form>
@@ -125,11 +127,12 @@
           </el-dialog>
           </div>
   </template>
-  
+
   <script>
   import {fetchArtworkImages,getArtworkById} from '../utils/artworkService';
-  import {getAllOrders,deleteOrder} from '../utils/orderServices';
-  import { getUserById} from '../utils/api';
+  import {deleteOrder} from '../utils/orderServices';
+  import axios from 'axios';
+  import { API_BASE_URL } from '../config/api';
   export default {
     data() {
       return {
@@ -137,50 +140,49 @@
         imageView: false,
         imageUrls:[],
         Orders: [],
+        page: 0,
+        total: 0,
+        searchTimer: null,
+        requestSequence: 0,
         searchQuery: '',
-        selectedStatus: '', 
+        selectedStatus: '',
         selectedCategories: [] ,
         editDialogVisible: false,
-        selectedPaymentStatus: null, 
-        selectedShippingStatus: null, 
-        infodialogVisible: false, 
+        selectedPaymentStatus: null,
+        selectedShippingStatus: null,
+        infodialogVisible: false,
         selectedArtworkInFo: {},
       };
     },
     computed:{
             filteredOrders() {
-            return this.Orders.filter(order => {
-            const nameMatch = order.artwork?.name?.toLowerCase().includes(this.searchQuery.toLowerCase());
-            const paymentMatch = this.selectedPaymentStatus
-            ? order.paymentStatus === this.selectedPaymentStatus
-            : true;
-
-        const shippingMatch = this.selectedShippingStatus
-            ? order.shippingStatus === this.selectedShippingStatus
-            : true;
-
-        return nameMatch && paymentMatch && shippingMatch;
-        });
+            return this.Orders;
         }
         },
         async mounted() {
         await this.fetchOrderList();
     },
     methods: {
+      scheduleSearch() { clearTimeout(this.searchTimer); this.searchTimer = setTimeout(() => this.resetPage(), 300); },
+      resetPage() { this.page = 0; this.fetchOrderList(); },
+      changePage(page) { this.page = page - 1; this.fetchOrderList(); },
       handleStatusChange() {
         this.selectedPaymentStatus = null;
             this.selectedShippingStatus = null;
+            this.resetPage();
     },
         togglePaymentStatus(status) {
-            this.selectedPaymentStatus = status; 
-            this.selectedShippingStatus = null; 
+            this.selectedPaymentStatus = status;
+            this.selectedShippingStatus = null;
+            this.resetPage();
         },
         toggleShippingStatus(status) {
-            this.selectedShippingStatus = status; 
+            this.selectedShippingStatus = status;
             this.selectedPaymentStatus = null;
+            this.resetPage();
         },
     resetEditForm() {
-      this.selectedImageUrl = ""; 
+      this.selectedImageUrl = "";
       this.imageView = false,
       this.ImageUrls=[];
     },
@@ -188,26 +190,29 @@
         this.selectedCategories = val;
     },
     sortById(a, b) {
-      return a.auctionId - b.auctionId; 
+      return a.auctionId - b.auctionId;
     },
     async fetchOrderList() {
+      const sequence = ++this.requestSequence;
       try {
-            const response = await getAllOrders(); 
-            this.Orders = await Promise.all(response.map(async order => {
-            order.artwork = await getArtworkById(order.artworkId);
-            order.buyer =await getUserById(order.buyerId);
-            order.seller =await getUserById(order.sellerId);
-            return order;
-            }));
-        this.Orders = response;
+        const params = { page: this.page, size: 20 };
+        if (this.searchQuery.trim()) params.keyword = this.searchQuery.trim();
+        if (this.selectedPaymentStatus) params.paymentStatus = this.selectedPaymentStatus;
+        if (this.selectedShippingStatus) params.shippingStatus = this.selectedShippingStatus;
+        const { data } = await axios.get(`${API_BASE_URL}/api/orders/admin-page`, { params });
+        if (sequence !== this.requestSequence) return;
+        this.Orders = data.content.map(order => ({ ...order, artwork: { name: order.artworkName }, buyer: { username: order.buyerName }, seller: { username: order.sellerName } }));
+        this.total = data.totalElements;
       } catch (error) {
         console.error('获取数据失败:', error);
       }
     },
-     handleViewDetails(order){
-        this.selectedArtworkInFo =order.artwork
-        this.fetchImages(this.selectedArtworkInFo.artworkId); 
-        this.infodialogVisible = true;
+     async handleViewDetails(order){
+        try {
+          this.selectedArtworkInFo = await getArtworkById(order.artworkId);
+          this.fetchImages(order.artworkId);
+          this.infodialogVisible = true;
+        } catch (error) { this.$message.error('加载作品详情失败'); }
     },
     handleDelete(row) {
             const orderId = row.orderId;
@@ -229,11 +234,11 @@
           })
       },
       viewImage(imageUrl) {
-        this.selectedImageUrl = imageUrl; 
+        this.selectedImageUrl = imageUrl;
         this.imageView = true;
       },
       closeImage(){
-        this.selectedImageUrl = ""; 
+        this.selectedImageUrl = "";
         this.imageView = false;
       },
       getPaymentStatus(status) {
@@ -263,5 +268,5 @@
     },
   };
   </script>
-  
+
   <style scoped src="@/assets/css/HomePage.css"></style>

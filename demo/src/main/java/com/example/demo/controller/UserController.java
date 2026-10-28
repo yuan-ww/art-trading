@@ -3,22 +3,31 @@ package com.example.demo.controller;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.UserService;
+import com.example.demo.service.AccessControlService;
+import com.example.demo.service.ImageUploadService;
+import com.example.demo.service.WalletService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 
 @RestController
@@ -27,12 +36,20 @@ public class UserController {
 
     @Value("${upload.path}") //
     private String uploadPath;
+    @Value("${app.public-base-url}")
+    private String publicBaseUrl;
 
     @Autowired
     private UserService userService;
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private AccessControlService accessControlService;
+    @Autowired
+    private ImageUploadService imageUploadService;
+    @Autowired
+    private WalletService walletService;
 
     @GetMapping("/checkUsername")
     public ResponseEntity<Boolean> checkUsername(@RequestParam String username, @RequestParam Integer userId) {
@@ -50,7 +67,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> loginUser(@RequestBody User user) {
+    public ResponseEntity<Map<String, Object>> loginUser(@RequestBody User user, HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
         // 1. 检查邮箱是否已注册
         if (!userRepository.existsByEmail(user.getEmail())) {
@@ -63,6 +80,21 @@ public class UserController {
         if (isAuthenticated) {
             // 登录成功，获取用户信息
             User loggedInUser = userRepository.findByEmail(user.getEmail());
+            if (loggedInUser.isDisabled()) {
+                response.put("status", 2);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(new UsernamePasswordAuthenticationToken(
+                    loggedInUser.getUserId(),
+                    null,
+                    List.of(new SimpleGrantedAuthority("ROLE_" + loggedInUser.getRole()))
+            ));
+            SecurityContextHolder.setContext(context);
+            request.getSession(true).setAttribute(
+                    HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                    context
+            );
 
             // 设置响应体
             response.put("status", 0); // 登录成功
@@ -79,9 +111,19 @@ public class UserController {
         }
 
     }
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
+        return ResponseEntity.noContent().build();
+    }
 //获取用户
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Integer id) {
+        accessControlService.requireSelfOrAdmin(id);
         Optional<User> user = userRepository.findById(id);
         if (user.isPresent()) {
             return ResponseEntity.ok(user.get());
@@ -92,71 +134,89 @@ public class UserController {
 //
     @GetMapping("/getUsersByRole")
     public List<User> getUsersByRole(@RequestParam String role) {
+        accessControlService.requireAdmin();
         return userRepository.findByRole(role);  // 根据角色返回用户
+    }
+    @GetMapping("/page")
+    public Page<User> getUsersPage(@RequestParam(defaultValue = "User") String role,
+                                   @RequestParam(defaultValue = "") String keyword,
+                                   @RequestParam(defaultValue = "0") int page,
+                                   @RequestParam(defaultValue = "20") int size) {
+        accessControlService.requireAdmin();
+        return userRepository.findByRoleAndUsernameContainingIgnoreCase(role, keyword.trim(),
+                PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size)), Sort.by("userId").descending()));
     }
         // 更新用户信息
     @PutMapping("/{id}/updateUser")
     public ResponseEntity<User> updateUser(@PathVariable Integer id, @RequestBody User userDetails) {
-        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        accessControlService.requireSelfOrAdmin(id);
         Optional<User> optionalUser = userRepository.findByUserId(id);
         if (optionalUser.isPresent()) {
             User user = optionalUser.get();
             user.setUsername(userDetails.getUsername());
             user.setEmail(userDetails.getEmail());
-            user.setAvatar(userDetails.getAvatar());
             user.setPhone(userDetails.getPhone());
             user.setAddress(userDetails.getAddress());
-            user.setWalletBalance(userDetails.getWalletBalance());
             user.setRealName(userDetails.getRealName());
             user.setIdCardNumber(userDetails.getIdCardNumber());
             User updatedUser = userRepository.save(user);
             return ResponseEntity.ok(updatedUser);
         } else {
-            // 添加新用户，设置默认密码
-            userDetails.setPassword(passwordEncoder.encode("123456"));  // 设置默认密码
-            User newUser = userRepository.save(userDetails);
-            return ResponseEntity.ok(newUser);
+            return ResponseEntity.notFound().build();
         }
     }
     //更新头像
     @PostMapping("/{userId}/uploadAvatar")
     public ResponseEntity<String> uploadAvatar(@PathVariable Integer userId, @RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("文件不能为空");
-        }
+        accessControlService.requireSelfOrAdmin(userId);
         Optional<User> userOpt = userRepository.findById(userId);
         String currentAvatarUrl = userOpt.map(User::getAvatar).orElse(null);
-
-        String currentAvatarPath = currentAvatarUrl != null ? currentAvatarUrl.replace("http://localhost:10202/images/avatars/", "src/main/resources/static/images/avatars/") : null;
-        // 生成唯一文件名
-        String originalFilename = file.getOriginalFilename();
-        String fileExtension = originalFilename != null ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
-        String newFileName = UUID.randomUUID().toString() + fileExtension; // 生成随机文件名
-
-        // 定义文件存储路径
-        String directory = "src/main/resources/static/images/avatars/";
-        Path filePath = Paths.get(directory + newFileName);
-
+        Path avatarDirectory = Paths.get(uploadPath, "avatars").toAbsolutePath().normalize();
+        String avatarUrl = imageUploadService.store(file, avatarDirectory, publicBaseUrl + "/images/avatars/");
         try {
-            // 保存文件
-            Files.copy(file.getInputStream(), filePath);
-            String avatarUrl = "http://localhost:10202/images/avatars/" + newFileName;
             userService.updateUserAvatar(userId, avatarUrl);
-            if (currentAvatarPath != null) {
-                Path currentFilePath = Paths.get(currentAvatarPath);
-                Files.deleteIfExists(currentFilePath); // 删除原头像文件
-            }
-            return ResponseEntity.ok(avatarUrl);
-        } catch (MaxUploadSizeExceededException e) {
-            return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body("文件过大，请选择小于 5MB 的文件");
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("文件保存失败: " + e.getMessage());
+        } catch (RuntimeException e) {
+            // 新文件已写入但数据库未更新时，避免留下不可访问的头像文件。
+            deletePreviousUploadedAvatar(avatarUrl, avatarDirectory);
+            throw e;
+        }
+        deletePreviousUploadedAvatar(currentAvatarUrl, avatarDirectory);
+        return ResponseEntity.ok(avatarUrl);
+    }
+    @PutMapping("/{id}/disabled")
+    public ResponseEntity<String> setDisabled(@PathVariable Integer id, @RequestParam boolean disabled) {
+        accessControlService.requireAdmin();
+        User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        if ("Admin".equals(user.getRole())) return ResponseEntity.badRequest().body("不能禁用管理员");
+        user.setDisabled(disabled);
+        userRepository.save(user);
+        return ResponseEntity.ok(disabled ? "用户已禁用" : "用户已启用");
+    }
+
+    private void deletePreviousUploadedAvatar(String avatarUrl, Path avatarDirectory) {
+        String prefix = publicBaseUrl + "/images/avatars/";
+        if (avatarUrl == null || !avatarUrl.startsWith(prefix)) {
+            return;
+        }
+        String fileName = avatarUrl.substring(prefix.length());
+        if (!fileName.matches("[0-9a-fA-F-]{36}\\.(jpg|jpeg|png|gif)")) {
+            return;
+        }
+        Path previousAvatar = avatarDirectory.resolve(fileName).normalize();
+        if (!previousAvatar.getParent().equals(avatarDirectory)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(previousAvatar);
+        } catch (java.io.IOException ignored) {
+            // 旧头像删除失败不影响新头像的保存。
         }
     }
 
     //获取实名信息
     @GetMapping("/{id}/getrealname")
     public ResponseEntity<Map<String, String>> getRealNameInfo(@PathVariable Integer id) {
+        accessControlService.requireSelfOrAdmin(id);
         Map<String, String> realNameInfo = userService.getRealNameInfo(id);
 
         if (realNameInfo.isEmpty()) {
@@ -169,24 +229,22 @@ public class UserController {
     public ResponseEntity<?> recharge(@RequestBody Map<String, Object> request) {
         // 获取用户 ID
         int userId = Integer.parseInt(request.get("id").toString());
+        accessControlService.requireSelfOrAdmin(userId);
         // 获取充值金额，使用 double 类型
-        double amount = Double.parseDouble(request.get("amount").toString());
+        BigDecimal amount = new BigDecimal(request.get("amount").toString());
         // 检查充值金额是否合法
-        if (amount <= 0) {
+        if (amount.signum() <= 0) {
             return ResponseEntity.badRequest().body("充值金额无效");
         }
         // 调用服务层的充值逻辑
-        boolean success = userService.rechargeUserAccount(userId, amount);
-        if (success) {
-            return ResponseEntity.ok().body("充值成功");
-        } else {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("充值失败");
-        }
+        walletService.topUp(userId, amount, "模拟充值");
+        return ResponseEntity.ok().body("充值成功");
     }
     //更改密码
     @PostMapping("/changePassword")
     public ResponseEntity<?> changePassword(@RequestBody Map<String, Object> request) {
         Integer userId = (Integer) request.get("id");
+        accessControlService.requireSelfOrAdmin(userId);
         String currentPassword = (String) request.get("currentPassword");
         String newPassword = (String) request.get("newPassword");
         boolean success = userService.updatePassword(userId, currentPassword, newPassword);
@@ -198,20 +256,13 @@ public class UserController {
     }
     @PostMapping("/{id}/updateBalance")
     public ResponseEntity<String> updateBalance(@PathVariable Integer id, @RequestBody Map<String, Object> request) {
-        // 获取要更新的金额（正数代表充值，负数代表扣款）
-        BigDecimal amount = new BigDecimal(request.get("amount").toString());
-
-        // 调用服务层的更新余额逻辑
-        boolean success = userService.updateUserBalance(id, amount);
-        if (success) {
-            return ResponseEntity.ok("余额更新成功");
-        } else {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("余额更新失败");
-        }
+        accessControlService.requireAdmin();
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body("请使用有流水记录的充值流程");
     }
     //删除用户
     @DeleteMapping("/delete")
     public ResponseEntity<?> batchDelete(@RequestBody List<Integer> userIds) {
+        accessControlService.requireAdmin();
         try {
             userService.batchDeleteUsers(userIds);
             return ResponseEntity.ok("删除成功");

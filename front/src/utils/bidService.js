@@ -1,9 +1,10 @@
  
 import axios from 'axios';
- 
+import { API_BASE_URL } from '../config/api';
+
 // Base URL for the API
-const API_URL = 'http://localhost:10202/api/bids';
-const URL = 'http://localhost:10202/api/bids/createBid';
+const API_URL = `${API_BASE_URL}/api/bids`;
+const URL = `${API_BASE_URL}/api/bids/createBid`;
  
 // 出价
 export const  createBid= async (auctionId, userId, bidAmount) => {
@@ -76,4 +77,3 @@ export const getBidsByUser= async(userId)=> {
     console.log(error);
   }
 };
- 

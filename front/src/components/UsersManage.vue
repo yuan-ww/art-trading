@@ -1,5 +1,5 @@
 <template>
-    <div > 
+    <div >
             <el-row class="toolbar" :gutter="20" style="margin-bottom: 20px;">
               <el-col :span="2">
                   <el-button type="danger" @click="handleBatchDelete" :disabled="selectedUsers.length === 0">批量删除</el-button>
@@ -11,13 +11,14 @@
                 <el-input
                   v-model="searchQuery"
                    placeholder="请输入用户名搜索"
+                  @input="scheduleSearch"
                   clearable
                 />
               </el-col>
-              <el-col :span="4">  
+              <el-col :span="4">
             </el-col>
               <el-col :span="8">
-                <div class="statistics">共 {{ filteredUsers.length }} 条记录</div>
+                <div class="statistics">共 {{ total }} 条记录</div>
               </el-col>
             </el-row>
             <div class="table-container">
@@ -34,10 +35,12 @@
               <el-table-column prop="phone" label="电话" width="180" />
               <el-table-column prop="address" label="地址" width="180" />
               <el-table-column prop="walletBalance" label="余额" width="120" />
+              <el-table-column label="账号状态" width="100"><template #default="{ row }">{{ row.disabled ? '已禁用' : '正常' }}</template></el-table-column>
               <el-table-column  label="操作" width="200">
                 <template #default="{ row }">
                   <el-button  @click="handleEdit(row)" type="info"> 编辑 </el-button>
-                  <el-popconfirm 
+                  <el-button @click="toggleDisabled(row)">{{ row.disabled ? '启用' : '禁用' }}</el-button>
+                  <el-popconfirm
                     title="确定删除用户?"
                     @confirm="() => handleDelete(row)"
                     >
@@ -48,9 +51,10 @@
                 </template>
               </el-table-column>
             </el-table>
+            <el-pagination layout="prev, pager, next" :total="total" :page-size="20" :current-page="page + 1" @current-change="changePage" />
           </div>
             <el-dialog v-model="editDialogVisible" title="用户管理" width="32%" @close="resetEditForm">
-              <el-form :model="editForm" ref="editForm" label-width="100px" class="custom-form"> 
+              <el-form :model="editForm" ref="editForm" label-width="100px" class="custom-form">
                 <el-form-item label="用户名" class="form-item">
                   <el-input v-model="editForm.username" class="custom-input"/>
                 </el-form-item>
@@ -77,16 +81,22 @@
             </el-dialog>
           </div>
   </template>
-  
+
   <script>
 import { ElMessageBox} from 'element-plus';
-import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
+import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
+import { updateUserInfo,checkUsernameAvailability,
   checkEmailAvailability,addUser,batchDeleteUsers} from '../utils/api';
   export default {
     data() {
       return {
         selectedFile: null,
         users: [],
+        page: 0,
+        total: 0,
+        searchTimer: null,
+        requestSequence: 0,
         searchQuery: '',
         selectedUsers: [] ,
         editDialogVisible: false,
@@ -106,18 +116,23 @@ import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
     },
     computed:{
         filteredUsers() {
-      if (this.searchQuery) {
-        return this.users.filter(user =>
-          user.username.toLowerCase().includes(this.searchQuery.toLowerCase()) 
-        );
-      }
-      return this.users; 
+      return this.users;
     }
     },
         async mounted() {
         await this.fetchUsersList();
     },
     methods: {
+      scheduleSearch() { clearTimeout(this.searchTimer); this.searchTimer = setTimeout(() => { this.page = 0; this.fetchUsersList(); }, 300); },
+      changePage(page) { this.page = page - 1; this.fetchUsersList(); },
+      async toggleDisabled(row) {
+        try {
+          await this.$confirm(`确认${row.disabled ? '启用' : '禁用'}该用户？`, '账号管理');
+          await axios.put(`${API_BASE_URL}/api/user/${row.userId}/disabled`, null, { params: { disabled: !row.disabled } });
+          this.$message.success('账号状态已更新');
+          await this.fetchUsersList();
+        } catch (error) { if (error !== 'cancel' && error !== 'close') this.$message.error('账号状态更新失败'); }
+      },
       handleEdit(row) {
       this.editForm = { ...row };
       this.editDialogVisible = true;
@@ -130,7 +145,7 @@ import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
         } else if (this.editForm.username.length < 3 || this.editForm.username.length > 20) {
             alert('用户名长度应在 3 到 20 个字符之间');
             return;
-        }  
+        }
         try {
           const usernameAvailable = await checkUsernameAvailability(this.editForm.username, this.editForm.userId);
           const emailAvailable = await checkEmailAvailability(this.editForm.email, this.editForm.userId);
@@ -153,7 +168,7 @@ import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
         } catch (error) {
             alert('更新失败')
         }
-      this.editDialogVisible = false; 
+      this.editDialogVisible = false;
     },
     async saveUser() {
       if(!this.editForm.username || !this.editForm.email){
@@ -162,7 +177,7 @@ import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
         } else if (this.editForm.username.length < 3 || this.editForm.username.length > 20) {
             alert('用户名长度应在 3 到 20 个字符之间');
             return;
-        }  
+        }
         try {
             const response = Number(await addUser(this.editForm));
             const code = response;
@@ -183,7 +198,7 @@ import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
                 break;
               default:
                 this.$message.error("发生未知错误");
-            }   
+            }
           } catch (error) {
               console.error("出错了:", error);
               return;
@@ -201,13 +216,13 @@ import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
       this.isEditing = false;
     },
     async handleAddUser() {
-      this.editDialogVisible = true; 
+      this.editDialogVisible = true;
     },
     handleDelete(row) {
       const userIds = [row.userId];
       console.log(userIds)
       batchDeleteUsers(userIds).then((response) => {
-      this.$message.success(response.data); 
+      this.$message.success(response.data);
       this.fetchUsersList(this.pageRole);
     }).catch((error) => {
       console.error('删除失败:', error);
@@ -244,12 +259,15 @@ import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
         })
     },
     sortById(a, b) {
-      return a.id - b.id; 
+      return a.id - b.id;
     },
     async fetchUsersList() {
+      const sequence = ++this.requestSequence;
       try {
-        const response = await fetchUsersByRole('User'); 
-        this.users = response.data; 
+        const response = await axios.get(`${API_BASE_URL}/api/user/page`, { params: { role: 'User', keyword: this.searchQuery, page: this.page, size: 20 } });
+        if (sequence !== this.requestSequence) return;
+        this.users = response.data.content;
+        this.total = response.data.totalElements;
       } catch (error) {
         console.error('获取用户数据失败:', error);
       }
@@ -257,6 +275,6 @@ import { fetchUsersByRole, updateUserInfo,checkUsernameAvailability,
     }
   };
   </script>
-  
+
   <style scoped src="@/assets/css/HomePage.css"></style>
-  
+

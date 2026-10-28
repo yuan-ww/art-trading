@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
-const API_URL = 'http://localhost:10202/api/auctionRegistrations/register';
-const URL = 'http://localhost:10202/api/auctionRegistrations';
+const API_URL = `${API_BASE_URL}/api/auctionRegistrations/register`;
+const URL = `${API_BASE_URL}/api/auctionRegistrations`;
 // 报名
 export const registerForAuction = async (auctionId, userId, depositAmount) => {
     try {
@@ -41,7 +42,7 @@ export const getRegistrationsForUser = async (userId) => {
 //获取参加的人数
 export const countRegistrationsForAuction = async (auctionId) => {
   try {
-    const response = await axios.get(`${URL}/auction/${auctionId}`);
+    const response = await axios.get(`${URL}/auction/${auctionId}/count`);
     return response.data;
   } catch (error) {
     console.error('获取信息失败:', error);

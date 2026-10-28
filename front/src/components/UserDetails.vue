@@ -30,7 +30,7 @@
       <h2 class="title">个人信息</h2>
       <div  class="form-group avatar-container">
         <img :src="user.avatar || require('@/assets/images/avatars/avatar.png') " alt="头像" @click="uploadAvatar"  title="点击更改头像" class="avatar" style="cursor: pointer; width: 100px; height: 100px;" />
-        <input type="file" ref="avatarInput" @change="handleAvatarUpload" style="display: none;" />
+        <input type="file" ref="avatarInput" @change="handleAvatarUpload" accept="image/jpeg,image/png,image/gif" style="display: none;" />
       </div>
       <div class="real-info">
                 <el-button v-if="!isRealName" class="real-info-bt" @click="toggleRealNameForm">

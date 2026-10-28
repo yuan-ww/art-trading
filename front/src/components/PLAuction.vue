@@ -54,6 +54,7 @@
                     </div>
                     <div class="action-buttons">
                       <el-button @click="handleViewDetails(auction)">查看</el-button>
+                      <el-button v-if="auction.status === '已取消'" @click="handleResubmit(auction)">重新提交</el-button>
                       <el-popconfirm 
                         title="取消拍卖"
                         @confirm="() => handleDelete(auction)"
@@ -141,7 +142,7 @@
   </template>
   
   <script>
-  import {updateAuction,getAuctionsByArtworkIds,rejectAuction} from '../utils/auctionService';
+  import {updateAuction,getAuctionsByArtworkIds,rejectAuction,resubmitAuction} from '../utils/auctionService';
   import {fetchArtworkImages,fetchArtworksByUserId} from '../utils/artworkService';
   import { mapState } from 'vuex';
   export default {
@@ -193,6 +194,17 @@
         await this.fetchAuctionsList();
     },
     methods: {
+      async handleResubmit(auction) {
+        try {
+          const start = await this.$prompt('请输入新的开始时间，例如 2026-11-01T10:00:00', '重新提交拍卖', { inputValue: auction.startTime });
+          const end = await this.$prompt('请输入新的结束时间，例如 2026-11-02T10:00:00', '重新提交拍卖', { inputValue: auction.endTime });
+          await resubmitAuction(auction.auctionId, { ...auction, startTime: start.value, endTime: end.value });
+          this.$message.success('已重新提交审核');
+          await this.fetchAuctionsList();
+        } catch (error) {
+          if (error !== 'cancel' && error !== 'close') this.$message.error('重新提交失败，请检查时间');
+        }
+      },
       async handleDelete(auction) {
         const now = new Date();
         const startTime = new Date(auction.startTime);

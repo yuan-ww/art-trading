@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 // 设置基础URL
-const API_URL = 'http://localhost:10202/api/categories';
+const API_URL = `${API_BASE_URL}/api/categories`;
 
 // 获取所有分类
 export const fetchcategories = () => {
@@ -9,7 +10,7 @@ export const fetchcategories = () => {
   };
 // 根据ID获取单个分类
 export function getCategoryById(id) {
-  return axios.get(`${API_URL}/${id}`);
+  return axios.get(`${API_URL}/${id}/getCategoryById`);
 }
 //添加分类
 export const addCategory = async(CatecoryData) => {

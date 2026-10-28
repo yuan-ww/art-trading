@@ -52,7 +52,7 @@
 import { ElMessageBox } from 'element-plus'
 import {getAuctionById,settleAuction} from '../utils/auctionService';
 import {createBid,getBidsByAuction} from '../utils/bidService';
-import {countRegistrationsForAuction,settleDeposit} from '../utils/registerService';
+import {countRegistrationsForAuction} from '../utils/registerService';
 import { mapState } from 'vuex';
 export default {
   props: ['auctionId'],
@@ -100,8 +100,7 @@ export default {
         console.error('获取拍卖数据失败:', error);
       });
      countRegistrationsForAuction(this.auctionId).then(response => {
-        this.registrationsforauction = response;
-        this.countRegistration=response.length;
+        this.countRegistration=response;
       })
       .catch(error => {
         console.error('获取拍卖数据失败:', error);
@@ -123,13 +122,6 @@ export default {
         })
         .catch((error) => {
           console.error("结算失败:", error); 
-        });
-        settleDeposit(this.auctionData.auctionId) 
-        .then((data) => {
-          console.log("押金退还结果:", data); 
-        })
-        .catch((error) => {
-          console.error("退还失败:", error); 
         });
     },
 
@@ -153,8 +145,7 @@ export default {
         ]);
         this.biddingRecords = bidsResponse;
         this.auctionData = auctionResponse;
-        this.registrationsforauction = registrationsResponse;
-        this.countRegistration = registrationsResponse.length;
+        this.countRegistration = registrationsResponse;
       } catch (error) {
         console.error('获取数据失败:', error);
       }

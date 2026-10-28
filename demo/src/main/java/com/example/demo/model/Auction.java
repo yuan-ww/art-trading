@@ -1,6 +1,7 @@
 package com.example.demo.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -38,6 +39,7 @@ public class Auction {
     private BigDecimal currentHighestBid = BigDecimal.ZERO;  // 当前最高出价，默认为0
 
     @ManyToOne(fetch = FetchType.EAGER)
+    @JsonIgnoreProperties({"email", "password", "phone", "realName", "idCardNumber", "address", "walletBalance", "role"})
     @JoinColumn(name = "highest_bidder_id")
     private User highestBidder;  // 当前最高出价者
 
@@ -62,6 +64,9 @@ public class Auction {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private AuctionStatus status = AuctionStatus.审核中;  // 拍卖状态
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     public enum AuctionStatus {
         审核中,

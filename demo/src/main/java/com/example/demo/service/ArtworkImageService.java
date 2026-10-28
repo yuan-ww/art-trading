@@ -6,8 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
+import jakarta.transaction.Transactional;
 
 @Service
 public class ArtworkImageService {
@@ -19,6 +22,7 @@ public class ArtworkImageService {
     private String uploadDir;
 
     // 根据 imageId 删除图片
+    @Transactional
     public boolean deleteImageById(Integer imageId) {
         Optional<ArtworkImage> artworkImage = artworkImageRepository.findById(imageId);
         if (artworkImage.isPresent()) {
@@ -26,34 +30,28 @@ public class ArtworkImageService {
             String imageUrl = artworkImage.get().getImageUrl();
 
             // 删除本地文件
-            boolean fileDeleted = deleteLocalFile(imageUrl);
-
-            if (fileDeleted) {
-                // 删除数据库记录
-                artworkImageRepository.deleteById(imageId);
-                return true;
-            }
+            deleteLocalFile(imageUrl);
+            // 文件已经丢失时仍应删除数据库引用，避免前端永久展示坏图片。
+            artworkImageRepository.delete(artworkImage.get());
+            return true;
         }
         return false;
     }
 
     // 删除本地文件的方法
-    private boolean deleteLocalFile(String imageUrl) {
+    private void deleteLocalFile(String imageUrl) {
         try {
-            if (imageUrl.startsWith("file:")) {
-                imageUrl = imageUrl.substring(5);
+            String fileName = Path.of(imageUrl).getFileName().toString();
+            Path directory = Path.of(uploadDir).toAbsolutePath().normalize();
+            Path file = directory.resolve(fileName).normalize();
+            if (!file.getParent().equals(directory)) {
+                throw new IllegalArgumentException("无效的图片路径");
             }
-            // 提取文件名
-            String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
-            // 创建文件对象
-            File file = new File(uploadDir, fileName);
-            // 删除文件
-            if (file.exists()) {
-                return file.delete();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+            int extension = fileName.lastIndexOf('.');
+            if (extension > 0) Files.deleteIfExists(directory.resolve("thumbnails").resolve(fileName.substring(0, extension) + ".png"));
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            throw new IllegalStateException("删除图片文件失败", e);
         }
-        return false;
     }
 }

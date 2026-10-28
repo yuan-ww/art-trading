@@ -69,6 +69,9 @@
             <img src="@/assets/images/icons/carousel.png" alt="轮播" class="menu-icon" />
             <span>轮播管理</span>
           </el-menu-item>
+          <el-menu-item index="statistics">运营统计</el-menu-item>
+          <el-menu-item index="after-sales">售后处理</el-menu-item>
+          <el-menu-item index="reports">举报处理</el-menu-item>
           <el-menu-item index="logout">
             <img src="@/assets/images/icons/out.png" alt="系统首页" class="menu-icon" />
             <span>退出系统</span>
@@ -107,6 +110,9 @@
           <div v-if="activeContent === 'carousel'">
             <CarouselManage/>
           </div>
+          <div v-if="activeContent === 'statistics'"><StatisticsPanel /></div>
+          <div v-if="activeContent === 'after-sales'"><AfterSaleManage /></div>
+          <div v-if="activeContent === 'reports'"><ReportManage /></div>
           <div v-if="activeContent === 'logout'">
 
           </div>
@@ -136,6 +142,9 @@ import OrdersManage from '@/components/OrdersManage.vue';
 import ShippingManage from '@/components/ShippingManage.vue';
 import CarouselManage from '@/components/CarouselManage.vue';
 import ManageHome from '@/components/ManageHome.vue';
+import StatisticsPanel from '@/components/StatisticsPanel.vue';
+import AfterSaleManage from '@/components/AfterSaleManage.vue';
+import ReportManage from '@/components/ReportManage.vue';
 export default {
   components: {
     UserDetails,
@@ -149,7 +158,10 @@ export default {
     OrdersManage,
     ShippingManage,
     CarouselManage,
-    ManageHome
+    ManageHome,
+    StatisticsPanel,
+    AfterSaleManage,
+    ReportManage
   },
   data() {
     return {

@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.model.Bid;
 import com.example.demo.service.AuctionRegistrationService;
 import com.example.demo.service.BidService;
+import com.example.demo.service.AccessControlService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,8 @@ public class BidController {
 
     @Autowired
     private BidService bidService;
+    @Autowired
+    private AccessControlService accessControlService;
 
 
     // 创建出价
@@ -25,6 +28,7 @@ public class BidController {
                                        @RequestParam Integer userId,
                                        @RequestParam BigDecimal bidAmount){
         try {
+            accessControlService.requireSelfOrAdmin(userId);
             Bid savedBid = bidService.placeBid(auctionId,userId,bidAmount);
             return ResponseEntity.ok(savedBid);
         } catch (IllegalArgumentException e) {
@@ -52,10 +56,15 @@ public class BidController {
     @DeleteMapping("deleteBid/{id}")
     public ResponseEntity<?> deleteBid(@PathVariable Integer id) {
         try {
+            Bid bid = bidService.findBidById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("出价不存在"));
+            accessControlService.requireSelfOrAdmin(bid.getUser().getUserId());
             bidService.deleteBid(id);
             return ResponseEntity.ok().build();
         } catch (EntityNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -68,6 +77,7 @@ public class BidController {
     // 获取用户出价记录
     @GetMapping("/getUserBid/{userId}")
     public List<Bid> getBidsByUser(@PathVariable Integer userId) {
+        accessControlService.requireSelfOrAdmin(userId);
         return bidService.getBidsByUser(userId);
     }
 }

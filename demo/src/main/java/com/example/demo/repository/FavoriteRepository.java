@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
+public interface FavoriteRepository extends JpaRepository<Favorite, Integer> {
 
     List<Favorite> findByUser(User user);
 
@@ -20,5 +20,5 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
     void deleteByUserAndArtwork(User user, Artwork artwork);
 
-    Optional<Object> findByUserAndArtwork(User user, Artwork artwork);
+    Optional<Favorite> findByUserAndArtwork(User user, Artwork artwork);
 }

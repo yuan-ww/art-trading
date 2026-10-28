@@ -19,6 +19,8 @@ import java.util.*;
 public class UserService {
     @Value("${upload.path}")
     private String imagesPath;
+    @Value("${app.public-base-url}")
+    private String publicBaseUrl;
     @Autowired
     private UserRepository userRepository;
 
@@ -33,12 +35,11 @@ public class UserService {
         }else if (userRepository.existsByEmail(user.getEmail())){
             return -1;// 邮箱被注册
         }else{
-            if (user.getWalletBalance() == null) {
-                user.setWalletBalance(BigDecimal.ZERO);
-            }
+            user.setWalletBalance(BigDecimal.ZERO);
+            user.setRole("User");
             String password = user.getPassword();
             if (password == null || password.trim().isEmpty()) {
-                password = "123456";
+                return -4;
             }
             user.setPassword(passwordEncoder.encode(password));
             userRepository.save(user);
@@ -72,12 +73,14 @@ public class UserService {
         return realNameInfo;
     }
     //充值
+    @Transactional
     public boolean rechargeUserAccount(Integer userId, double amount) {
         // 获取用户对象
-        User currentUser = userRepository.getUserByUserId(userId);
-        if (currentUser == null) {
+        Optional<User> user = userRepository.findByUserIdForUpdate(userId);
+        if (user.isEmpty()) {
             return false;
         }
+        User currentUser = user.get();
         BigDecimal currentBalance = currentUser.getWalletBalance();
         // 将充值金额转换为 BigDecimal
         BigDecimal rechargeAmount = new BigDecimal(Double.toString(amount));
@@ -115,7 +118,7 @@ public class UserService {
                         User user = userOpt.get();
                         String avatarUrl = user.getAvatar();
                         // 删除头像文件
-                        if (avatarUrl != null && !avatarUrl.equals("http://localhost:10202/images/avatars/default.png")) {
+                        if (avatarUrl != null && !avatarUrl.equals(publicBaseUrl + "/images/avatars/default.png")) {
                             deleteImageFile(avatarUrl);
                         };
                         // 删除用户记录
@@ -132,8 +135,9 @@ public class UserService {
             throw new IllegalArgumentException("用户ID列表为空");
         }
     }
+    @Transactional
     public boolean updateUserBalance(Integer userId, BigDecimal amount) {
-        Optional<User> optionalUser = userRepository.findById(userId);
+        Optional<User> optionalUser = userRepository.findByUserIdForUpdate(userId);
         if (optionalUser.isPresent()) {
             User user = optionalUser.get();
             BigDecimal currentBalance = user.getWalletBalance();

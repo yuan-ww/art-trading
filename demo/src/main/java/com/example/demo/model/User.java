@@ -1,6 +1,8 @@
 package com.example.demo.model;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 
@@ -20,17 +22,22 @@ public class User {
     private String email;
 
     @Column(nullable = false)
+    @ToString.Exclude
     private String password;
 
     @Column(name = "phone")
+    @ToString.Exclude
     private String phone;
 
     @Column(name = "real_name")
+    @ToString.Exclude
     private String realName;
 
     @Column(name = "id_number",unique = true)
+    @ToString.Exclude
     private String idCardNumber;
     @Column(name = "address")
+    @ToString.Exclude
     private String address;
 
 
@@ -45,6 +52,9 @@ public class User {
 
     @Column(name = "role", nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'User'")
     private String role = "User"; // 角色，默认为普通用户
+
+    @Column(name = "disabled", nullable = false)
+    private boolean disabled;
 
     public Integer getUserId() {
         return userId;
@@ -75,6 +85,7 @@ public class User {
         return email;
     }
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     public String getPassword() {
         return password;
     }

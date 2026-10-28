@@ -126,7 +126,7 @@
                         class="upload-input"
                         @change="handleFileUpload"
                         multiple
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/gif"
                         hidden
                     />
                     </div>
@@ -564,4 +564,3 @@ export default {
 };
 </script>
   <style scoped src="@/assets/css/HomePage.css"></style>
-  

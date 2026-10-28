@@ -61,6 +61,8 @@
               <img src="@/assets/images/icons/favoriet.png" alt="退出" class="menu-icon" />
               <span>我的收藏</span>
             </el-menu-item>
+            <el-menu-item index="wallet">钱包流水</el-menu-item>
+            <el-menu-item index="notifications">消息通知</el-menu-item>
             <el-menu-item index="logout">
               <img src="@/assets/images/icons/out.png" alt="退出" class="menu-icon" />
               <span>退出</span>
@@ -89,9 +91,11 @@
             <div v-if="activeContent === 'deal-3'"> 
               <PLBids/>
             </div>
-            <div v-if="activeContent === 'favoriet'"> 
+            <div v-if="activeContent === 'favoriet'">
               <PLFavorite/>
             </div>
+            <div v-if="activeContent === 'wallet'"><WalletHistory /></div>
+            <div v-if="activeContent === 'notifications'"><NotificationsPanel /></div>
             <div v-if="activeContent === 'profile'">
                 <UserDetails />
             </div>
@@ -114,6 +118,8 @@
   import PLBuyer from '@/components/PLBuyer.vue';
   import PLBids from '@/components/PLBids.vue';
   import PLFavorite from '@/components/PLFavorite.vue';
+  import WalletHistory from '@/components/WalletHistory.vue';
+  import NotificationsPanel from '@/components/NotificationsPanel.vue';
   export default {
     components: {
       UserDetails,
@@ -124,6 +130,8 @@
       PLBuyer,
       PLBids,
       PLFavorite,
+      WalletHistory,
+      NotificationsPanel,
     },
     data() {
       return {
@@ -205,4 +213,3 @@
   };
   </script>
   <style scoped src="@/assets/css/HomePage.css"></style>
-  

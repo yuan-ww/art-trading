@@ -6,14 +6,15 @@ import VueAxios from 'vue-axios';
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import store from './store';
+import { API_BASE_URL } from './config/api';
 
 const app = createApp(App);
 app.use(store); // 注册 store
 app.use(ElementPlus);
 app.use(router); // 使用路由
 app.config.globalProperties.$axios = axios;
-axios.defaults.baseURL = 'http://127.0.0.1:10202';
+axios.defaults.baseURL = API_BASE_URL;
+axios.defaults.withCredentials = true;
 app.use(VueAxios, axios);
 app.mount('#app');
   
-

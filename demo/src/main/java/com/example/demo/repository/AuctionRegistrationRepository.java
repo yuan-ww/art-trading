@@ -8,6 +8,7 @@ public interface AuctionRegistrationRepository extends JpaRepository<AuctionRegi
 
     // 根据拍卖ID查询所有注册信息
     List<AuctionRegistration> findByAuction_AuctionId(Integer auctionId);
+    long countByAuction_AuctionId(Integer auctionId);
     boolean existsByUser_UserIdAndAuction_AuctionId(Integer userId, Integer auctionId);
 
     // 根据用户ID查询所有注册信息

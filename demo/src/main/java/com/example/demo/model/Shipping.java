@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import java.sql.Timestamp;
 
 @Entity
-@Table(name = "Shipping")
+@Table(
+        name = "Shipping",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_shipping_order",
+                columnNames = "order_id"
+        )
+)
 public class Shipping {
 
     @Id
@@ -45,6 +51,11 @@ public class Shipping {
 
     @Column(name = "receiver_phone")
     private String receiverPhone; // 收货人电话
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+    @Column(name = "request_key", unique = true, length = 80)
+    private String requestKey;
 
     public enum ShippingStatus {
         Pending, Shipped, Delivered
@@ -147,4 +158,8 @@ public class Shipping {
     public void setReceiverPhone(String receiverPhone) {
         this.receiverPhone = receiverPhone;
     }
+
+    public String getRequestKey() { return requestKey; }
+
+    public void setRequestKey(String requestKey) { this.requestKey = requestKey; }
 }

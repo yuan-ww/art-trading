@@ -31,6 +31,27 @@ public class Order {
     private Timestamp createdAt;
     @Column(name = "updated_at")
     private Timestamp updatedAt;
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+    @Column(name = "payment_request_key", unique = true, length = 80)
+    private String paymentRequestKey;
+
+    @PrePersist
+    public void initializeTimestamps() {
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
+    }
+
+    @PreUpdate
+    public void updateTimestamp() {
+        updatedAt = new Timestamp(System.currentTimeMillis());
+    }
 
     public enum PaymentStatus {
         Pending, Paid, Refunded,Cancel

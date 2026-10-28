@@ -4,6 +4,7 @@ import com.example.demo.model.User;
 import com.example.demo.model.Artwork;
 import com.example.demo.repository.ArtworksRepository;
 import com.example.demo.service.FavoriteService;
+import com.example.demo.service.AccessControlService;
 import com.example.demo.repository.UserRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ public class FavoriteController {
     private FavoriteService favoriteService;
 
     @Autowired
+    private AccessControlService accessControlService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -28,6 +32,7 @@ public class FavoriteController {
 
     @GetMapping("/getFavoritesByUser/{userId}")
     public ResponseEntity<List<Favorite>> getFavoritesByUser(@PathVariable Integer userId) {
+        accessControlService.requireSelfOrAdmin(userId);
         Optional<User> user = userRepository.findById(userId);
         return user.map(value -> ResponseEntity.ok(favoriteService.getFavoritesByUser(value)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -35,6 +40,7 @@ public class FavoriteController {
 
     @PostMapping("/addFavorite")
     public ResponseEntity<String> addFavorite(@RequestParam Integer userId, @RequestParam Integer artworkId) {
+        accessControlService.requireSelfOrAdmin(userId);
         Optional<User> user = userRepository.findById(userId);
         Optional<Artwork> artwork = artworksRepository.findById(artworkId);
 
@@ -47,6 +53,7 @@ public class FavoriteController {
 
     @DeleteMapping("/removeFavorite")
     public ResponseEntity<String> removeFavorite(@RequestParam Integer userId, @RequestParam Integer artworkId) {
+        accessControlService.requireSelfOrAdmin(userId);
         Optional<User> user = userRepository.findById(userId);
         Optional<Artwork> artwork = artworksRepository.findById(artworkId);
 
@@ -58,6 +65,7 @@ public class FavoriteController {
     }
     @GetMapping("/isFavorite")
     public ResponseEntity<Boolean> isFavorite(@RequestParam Integer userId, @RequestParam Integer artworkId) {
+        accessControlService.requireSelfOrAdmin(userId);
         boolean isFavorite = favoriteService.isFavorite(userId, artworkId);
         return ResponseEntity.ok(isFavorite);
     }

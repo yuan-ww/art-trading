@@ -1,11 +1,18 @@
 package com.example.demo.model;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "auctionregistrations")
+@Table(
+        name = "auctionregistrations",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_auction_registrations_auction_user",
+                columnNames = {"auction_id", "user_id"}
+        )
+)
 public class AuctionRegistration {
 
     @Id
@@ -17,6 +24,7 @@ public class AuctionRegistration {
     private Auction auction;
 
     @ManyToOne
+    @JsonIgnoreProperties({"email", "password", "phone", "realName", "idCardNumber", "address", "walletBalance", "role"})
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
 

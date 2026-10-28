@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
-// 假设后端 API 的基础 URL
-const BASE_URL = 'http://localhost:10202/api/orders';
+const BASE_URL = `${API_BASE_URL}/api/orders`;
+export const getParticipantOrdersPage = async (params) => (await axios.get(`${BASE_URL}/participant-page`, { params })).data;
 
 // 获取所有订单
 export const getAllOrders = async () => {
@@ -85,14 +86,19 @@ export const handleExpiredOrder = async (orderId) => {
     }
 };
 export const updateOrderStatus = async (userId, artworkId, status) => {
+    const storageKey = `payment:${userId}:${artworkId}:${status}`;
+    const requestKey = sessionStorage.getItem(storageKey) || crypto.randomUUID();
+    sessionStorage.setItem(storageKey, requestKey);
     try {
         const response = await axios.put(`${BASE_URL}/updateOrderStatus`, null, {
-            params: {
+          params: {
               userId,
               artworkId,
               status,
             },
+            headers: { 'Idempotency-Key': requestKey },
           });
+        sessionStorage.removeItem(storageKey);
         return response.data;
     } catch (error) {
         // 记录错误并抛出
